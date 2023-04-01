@@ -1,0 +1,31 @@
+name: Formatting
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Build formatter
+        run: go build -o formatter main.go
+
+      - name: Run formatter
+        run: ./formatter
+
+      - name: Check for changes
+        run: |
+          git diff --exit-code || (echo "Files were changed by the formatter. Please commit the changes." && exit 1)
