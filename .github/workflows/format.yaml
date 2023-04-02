@@ -25,7 +25,9 @@ jobs:
 
       - name: Build formatter
         run: |
-      
+         go get -u github.com/hashicorp/hcl/v2/hclsyntax
+         go get -u github.com/hashicorp/hcl/v2/hclwrite
+
          go run main1.go
         
 
