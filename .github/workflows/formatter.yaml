@@ -16,7 +16,7 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.17
-          go-root: ${{ github.workspace }}
+        
       - name: Check out code
         uses: actions/checkout@v2
 
@@ -24,7 +24,10 @@ jobs:
         run: go mod tidy
 
       - name: Build formatter
-        run: go run main.go
+        run: |
+         cd $GITHUB_WORKSPACE
+         go run main.go
+
 
 
       - name: Check for changes
