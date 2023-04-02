@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -66,10 +67,6 @@ func formatYAMLFile(path string) error {
 		})
 		fmt.Printf("Differences in YAML file: %s\n", path)
 		fmt.Println(diff)
-
-		if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -86,9 +83,15 @@ func formatTerraformFile(path string) error {
 		return fmt.Errorf("Error parsing Terraform file '%s': %s", path, diags.Error())
 	}
 
-	hclwriteFile := hclwrite.NewEmptyFile()
-	body := hclwriteFile.Body()
-	hclwrite.Go(file.Body(), body)
+	jsonBytes, err := json.Marshal(file.Body())
+	if err != nil {
+		return err
+	}
+
+	hclwriteFile, err := hclwrite.ParseJSON(jsonBytes, path)
+	if err != nil {
+		return err
+	}
 
 	formattedData := hclwrite.Format(hclwriteFile.Bytes())
 
@@ -102,12 +105,7 @@ func formatTerraformFile(path string) error {
 		})
 		fmt.Printf("Differences in Terraform file: %s\n", path)
 		fmt.Println(diff)
-
-		if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
-			return err
-		}
 	}
 
 	return nil
 }
-
