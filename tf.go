@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+        "strconv"
 
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
