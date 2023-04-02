@@ -471,7 +471,7 @@ func getTypeValue(value interface{}) string {
 		return fmt.Sprintf("%v", value)
 	}
 }
-func generateDiff(originalData, correctedData []byte) ([]byte, error) {
+func generateDiff(originalData, correctedData []byte) string {
 	diff := difflib.UnifiedDiff{
 		A:        difflib.SplitLines(string(originalData)),
 		B:        difflib.SplitLines(string(correctedData)),
@@ -482,17 +482,9 @@ func generateDiff(originalData, correctedData []byte) ([]byte, error) {
 	text, err := difflib.GetUnifiedDiffString(diff)
 	if err != nil {
 		fmt.Println("Error generating diff:", err)
-		return nil, err
+		return ""
 	}
-	
-	var diffYaml bytes.Buffer
-	if err := yaml.NewEncoder(&diffYaml).Encode(text); err != nil {
-		fmt.Println("Error encoding diff into YAML:", err)
-		return nil, err
-	}
-	return diffYaml.Bytes(), nil
+	return text
 }
-
-
 
 
