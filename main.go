@@ -157,3 +157,37 @@ func findErrorLineAndSuggestFix(data string, err error) (int, string, string) {
 
 	return -1, "", ""
 }
+func suggestFixForLine(line string) string {
+	fixedLine := line
+
+	// Check for missing colons
+	if !strings.Contains(line, ":") && !strings.HasPrefix(line, "#") {
+		index := strings.IndexFunc(line, unicode.IsLetter)
+		if index != -1 {
+			fixedLine = line[:index+1] + ": " + line[index+1:]
+		}
+	}
+
+	// Check for missing spaces after colons
+	colonIndex := strings.Index(line, ":")
+	if colonIndex != -1 && len(line) > colonIndex+1 && line[colonIndex+1] != ' ' {
+		fixedLine = line[:colonIndex+1] + " " + line[colonIndex+1:]
+	}
+
+	// Fix incorrect indentation
+	indentation := 0
+	for _, char := range line {
+		if char == ' ' {
+			indentation++
+		} else {
+			break
+		}
+	}
+
+	correctIndentation := (indentation / 2) * 2
+	if correctIndentation != indentation {
+		fixedLine = strings.Repeat(" ", correctIndentation) + strings.TrimSpace(line)
+	}
+
+	return fixedLine
+}
