@@ -1,5 +1,3 @@
-package main
-
 import (
     "fmt"
     "io/ioutil"
@@ -74,7 +72,7 @@ func formatTerraform(data []byte) ([]byte, error) {
         return nil, fmt.Errorf("failed to parse HCL: %v", diags)
     }
 
-    config := hclsyntax.EncodeConfig(file.Body, &hclwrite.TabIndent{})
+    config := hclsyntax.EncodeConfig(file.Body, &hclwrite.Indent{})
     return config.Bytes(), nil
 }
 
