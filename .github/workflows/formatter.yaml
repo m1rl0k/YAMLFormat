@@ -24,7 +24,9 @@ jobs:
         run: go mod tidy
 
       - name: Build formatter
+        working-directory: ${{ github.workspace }}
         run: go run main.go
+
 
       - name: Check for changes
         run: |
