@@ -137,21 +137,22 @@ func formatYAML(data []byte) ([]byte, error) {
 }
 
 func traverseYAMLTree(node interface{}) {
-	switch node := node.(type) {
-	case map[string]interface{}:
-		for key, value := range node {
-			if mapValue, ok := value.(map[string]interface{}); ok {
-				// recursively traverse nested map
-				traverseYAMLTree(mapValue)
-			} else if listValue, ok := value.([]interface{}); ok {
-				// recursively traverse nested list
-				traverseYAMLList(listValue)
-			}
-		}
-	case []interface{}:
-		traverseYAMLList(node)
-	}
+    switch node := node.(type) {
+    case map[string]interface{}:
+        for _, value := range node {
+            if mapValue, ok := value.(map[string]interface{}); ok {
+                // recursively traverse nested map
+                traverseYAMLTree(mapValue)
+            } else if listValue, ok := value.([]interface{}); ok {
+                // recursively traverse nested list
+                traverseYAMLList(listValue)
+            }
+        }
+    case []interface{}:
+        traverseYAMLList(node)
+    }
 }
+
 
 func traverseYAMLList(list []interface{}) {
 	for _, value := range list {
