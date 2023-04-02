@@ -52,13 +52,13 @@ func processTerraformFile(filename string) {
 	}
 
 	for name, attr := range content.Attributes {
-		newBody.SetAttributeRaw(name, attr.Expr.Range().SliceBytes(data))
+		newBody.SetAttributeRaw(name, hclwrite.TokensForValue(attr.Expr))
 	}
 
 	for _, block := range content.Blocks {
 		newBlock := newBody.AppendNewBlock(block.Type, block.Labels)
 		for _, bAttr := range block.Body.Attributes() {
-			newBlock.Body().SetAttributeRaw(bAttr.Name, bAttr.Expr.Range().SliceBytes(data))
+			newBlock.Body().SetAttributeRaw(bAttr.Name, hclwrite.TokensForValue(bAttr.Expr))
 		}
 	}
 
@@ -83,7 +83,3 @@ func processTerraformFile(filename string) {
 		fmt.Printf("No changes needed for %s\n", filename)
 	}
 }
-
-
-
-
