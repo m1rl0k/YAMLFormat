@@ -28,7 +28,7 @@ jobs:
          go get -u github.com/hashicorp/hcl/v2/hclsyntax
          go get -u github.com/hashicorp/hcl/v2/hclwrite
 
-         go run main.go main1.go
+         go run main.go tf.go
         
 
 
