@@ -165,7 +165,51 @@ func traverseYAMLList(list []interface{}) {
 		}
 	}
 }
+func removeEmptyNodes(node interface{}) interface{} {
+    switch node := node.(type) {
+    case map[string]interface{}:
+        for key, value := range node {
+            node[key] = removeEmptyNodes(value)
+        }
+        // remove any keys with empty values
+        for key, value := range node {
+            if isEmpty(value) {
+                delete(node, key)
+            }
+        }
+    case []interface{}:
+        for i := range node {
+            node[i] = removeEmptyNodes(node[i])
+        }
+        // remove any empty nodes from list
+        for i := 0; i < len(node); i++ {
+            if isEmpty(node[i]) {
+                node = append(node[:i], node[i+1:]...)
+                i--
+            }
+        }
+    }
+    return node
+}
 
+func isEmpty(node interface{}) bool {
+    switch node := node.(type) {
+    case map[string]interface{}:
+        return len(node) == 0
+    case []interface{}:
+        return len(node) == 0
+    case string:
+        return node == ""
+    default:
+        return false
+    }
+}
+
+func correctString(str string) string {
+    str = strings.TrimSpace(str)
+    str = strings.ReplaceAll(str, "\\n", "\n")
+    return str
+}
 
 func countChanges(diff string) int {
 	count := 0
