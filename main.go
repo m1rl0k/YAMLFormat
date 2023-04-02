@@ -71,7 +71,7 @@ func formatHCLFile(path string) error {
 		return err
 	}
 
-	file, diags := hclsyntax.Parse(data, path, hcl.Pos{Line: 1, Column: 1})
+	file, diags := hclsyntax.ParseConfig(data, path, hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
 		return fmt.Errorf("Error parsing HCL file '%s': %s", path, diags.Error())
 	}
@@ -87,3 +87,4 @@ func formatHCLFile(path string) error {
 
 	return nil
 }
+
