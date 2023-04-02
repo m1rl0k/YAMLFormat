@@ -484,7 +484,25 @@ func generateDiff(originalData, correctedData []byte) string {
 		fmt.Println("Error generating diff:", err)
 		return ""
 	}
-	return text
+
+	// Add color coding of the terminal using ASCII escape codes
+	lines := strings.Split(text, "\n")
+	var buf bytes.Buffer
+	for _, line := range lines {
+		switch {
+		case strings.HasPrefix(line, "+"):
+			buf.WriteString("\033[32m") // Green
+		case strings.HasPrefix(line, "-"):
+			buf.WriteString("\033[31m") // Red
+		case strings.HasPrefix(line, "@"):
+			buf.WriteString("\033[36m") // Cyan
+		default:
+			buf.WriteString("\033[0m") // Reset
+		}
+		buf.WriteString(line)
+		buf.WriteString("\n")
+	}
+	return buf.String()
 }
 
 
