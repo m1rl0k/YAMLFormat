@@ -89,7 +89,7 @@ func processTerraformFile(filename string) {
 func tokensForExpr(expr hcl.Expression) hclwrite.Tokens {
 	return hclwrite.Tokens{
 		{
-			Type:  hcl.TokenIdent,
+			Type:  hcl.TokenIndent,
 			Bytes: []byte(expr.Range().SliceBytes(nil)),
 		},
 	}
