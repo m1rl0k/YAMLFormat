@@ -53,6 +53,7 @@ func formatYAMLFile(path string) error {
 	}
 
 	if !strings.EqualFold(string(data), string(formattedData)) {
+		fmt.Printf("Differences in YAML file: %s\n", path)
 		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
 			A:        difflib.SplitLines(string(data)),
 			B:        difflib.SplitLines(string(formattedData)),
@@ -60,9 +61,12 @@ func formatYAMLFile(path string) error {
 			ToFile:   "Formatted",
 			Context:  3,
 		})
-		fmt.Printf("Differences in YAML file: %s\n", path)
 		fmt.Println(diff)
+	} else {
+		fmt.Printf("No differences in YAML file: %s\n", path)
 	}
+
+	fmt.Println(strings.Repeat("-", 80))
 
 	return nil
 }
