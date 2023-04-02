@@ -31,7 +31,7 @@ func processTerraformFile(filename string) {
 		return
 	}
 
-	file, diags := hclwrite.ParseConfig(data, filename, nil)
+	file, diags := hclwrite.Parse(data)
 	if diags.HasErrors() {
 		fmt.Println("Error parsing file:", filename, diags.Error())
 		return
@@ -48,4 +48,5 @@ func processTerraformFile(filename string) {
 		fmt.Printf("No changes needed for %s\n", filename)
 	}
 }
+
 
