@@ -87,10 +87,7 @@ func formatTerraformFile(path string) error {
 	}
 
 	hclwriteFile := hclwrite.NewEmptyFile()
-	err = file.Body().WriteTo(hclwriteFile.Body())
-	if err != nil {
-		return err
-	}
+	hclwriteFile.Body().SetAttributeValue("", hclwrite.ObjectConsVal(file.Body().AsValue()))
 
 	formattedData := hclwrite.Format(hclwriteFile.Bytes())
 
