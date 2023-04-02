@@ -75,12 +75,38 @@ func formatYAMLFile(path string) (int, []byte, error) {
 		fmt.Println("Error reading file:", path, err)
 		return 0, nil, err
 	}
-	formattedData, err := formatYAML(data)
+	
+	// Attempt to parse the YAML data
+	var yamlData interface{}
+	if err := yaml.Unmarshal(data, &yamlData); err != nil {
+		// Handle the error by applying corrections to the data
+		correctedData, corrected, err := correctYAMLData(data)
+		if err != nil {
+			fmt.Println("Error correcting YAML data:", err)
+			return 0, nil, err
+		}
+		
+		// Return the corrected data and the number of changes made
+		if corrected {
+			if err := ioutil.WriteFile(path, correctedData, 0644); err != nil {
+				fmt.Println("Error writing corrected file", path, ":", err)
+				return 0, nil, err
+			}
+			return 1, correctedData, nil
+		}
+		
+		// Return the original data if no corrections were made
+		return 0, data, nil
+	}
+	
+	// If the data was successfully parsed, reformat it and compare to the original
+	formattedData, err := yaml.Marshal(yamlData)
 	if err != nil {
 		fmt.Println("Error formatting YAML data:", err)
 		return 0, nil, err
 	}
 	if !bytes.Equal(data, formattedData) {
+		// Generate a unified diff of the changes
 		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
 			A:        difflib.SplitLines(string(data)),
 			B:        difflib.SplitLines(string(formattedData)),
@@ -99,6 +125,29 @@ func formatYAMLFile(path string) (int, []byte, error) {
 
 	fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
 	return 0, nil, nil
+}
+
+// Attempt to correct YAML data errors
+func correctYAMLData(data []byte) ([]byte, bool, error) {
+	var yamlData interface{}
+	if err := yaml.Unmarshal(data, &yamlData); err != nil {
+		return nil, false, err
+	}
+	
+	// Recursively traverse the YAML tree and correct any formatting errors
+	corrected := traverseYAMLTreeCorrect(yamlData)
+	
+	// If corrections were made, reformat the YAML data and return it
+	if corrected {
+		correctedData, err := yaml.Marshal(yamlData)
+		if err != nil {
+			return nil, false, err
+		}
+		return correctedData, true, nil
+	}
+	
+	// If no corrections were made, return the original data
+	return data, false, nil
 }
 
 func formatDiff(diff string) string {
