@@ -12,7 +12,13 @@ import (
 )
 
 func main() {
-	if err := filepath.Walk(".", processFile); err != nil {
+	dir, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := filepath.Walk(dir, processFile); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
