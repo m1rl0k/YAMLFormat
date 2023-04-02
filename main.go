@@ -388,6 +388,102 @@ func getTypeName(v interface{}) string {
 		return "unknown"
 	}
 }
+func generateCorrectedData(actualData interface{}, pathIndentMap map[string]int, indentLevel int) []byte {
+	var buf bytes.Buffer
+
+	switch actualData := actualData.(type) {
+	case map[interface{}]interface{}:
+		buf.WriteString("{\n")
+		for k, v := range actualData {
+			key := fmt.Sprintf("%v", k)
+			value := getTypeValue(v)
+
+			indentStr := strings.Repeat("  ", indentLevel+1)
+			path := fmt.Sprintf("%s.%s", key, getTypeName(v))
+
+			if indent, ok := pathIndentMap[path]; ok {
+				buf.WriteString(strings.Repeat("  ", indent+1))
+			} else {
+				buf.WriteString(indentStr)
+			}
+
+			buf.WriteString(fmt.Sprintf("%s: %s", key, value))
+
+			if indent, ok := pathIndentMap[path]; ok && indentLevel+1 <= indent {
+				buf.WriteString("\n")
+			} else {
+				buf.WriteString(",\n")
+			}
+
+			generateCorrectedData(v, pathIndentMap, indentLevel+1)
+		}
+		buf.WriteString(strings.Repeat("  ", indentLevel))
+		buf.WriteString("}")
+	case []interface{}:
+		buf.WriteString("[\n")
+		for i, v := range actualData {
+			value := getTypeValue(v)
+
+			indentStr := strings.Repeat("  ", indentLevel+1)
+			path := fmt.Sprintf("[%d].%s", i, getTypeName(v))
+
+			if indent, ok := pathIndentMap[path]; ok {
+				buf.WriteString(strings.Repeat("  ", indent+1))
+			} else {
+				buf.WriteString(indentStr)
+			}
+
+			buf.WriteString(value)
+
+			if indent, ok := pathIndentMap[path]; ok && indentLevel+1 <= indent {
+				buf.WriteString("\n")
+			} else {
+				buf.WriteString(",\n")
+			}
+
+			generateCorrectedData(v, pathIndentMap, indentLevel+1)
+		}
+		buf.WriteString(strings.Repeat("  ", indentLevel))
+		buf.WriteString("]")
+	default:
+		return []byte(getTypeValue(actualData))
+	}
+
+	return buf.Bytes()
+}
+
+func getTypeName(value interface{}) string {
+	switch value.(type) {
+	case map[interface{}]interface{}:
+		return "map"
+	case []interface{}:
+		return "list"
+	default:
+		return "string"
+	}
+}
+
+func getTypeValue(value interface{}) string {
+	switch value.(type) {
+	case map[interface{}]interface{}, []interface{}:
+		data, err := yaml.Marshal(value)
+		if err != nil {
+			return ""
+		}
+		return "\n" + strings.TrimSpace(string(data))
+	default:
+		return fmt.Sprintf("%v", value)
+	}
+}
+func indentYAML(data []byte) ([]byte, error) {
+    var buf bytes.Buffer
+    err := yaml.Indent(&buf, data, "  ", "  ")
+    if err != nil {
+        return nil, err
+    }
+    return buf.Bytes(), nil
+}
+
 
 
 
