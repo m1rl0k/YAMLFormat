@@ -17,7 +17,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+
+	totalChanges := 0
+	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -26,23 +28,30 @@ func main() {
 		}
 		ext := filepath.Ext(path)
 		if ext == ".yaml" || ext == ".yml" {
-			return formatYAMLFile(path)
+			changes := formatYAMLFile(path)
+			totalChanges += changes
 		}
 		return nil
-	}); err != nil {
+	})
+
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+
+	fmt.Printf("\n\033[1mTotal changes: %d\033[0m\n", totalChanges)
 }
 
-func formatYAMLFile(path string) error {
+func formatYAMLFile(path string) int {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		return err
+		fmt.Println("Error reading file:", path, err)
+		return 0
 	}
 	formattedData, err := formatYAML(data)
 	if err != nil {
-		return err
+		fmt.Println("Error formatting YAML data:", err)
+		return 0
 	}
 	if !strings.EqualFold(string(data), string(formattedData)) {
 		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
@@ -52,47 +61,37 @@ func formatYAMLFile(path string) error {
 			ToFile:   "Formatted",
 			Context:  3,
 		})
-		fmt.Printf("\033[1;33mDifferences in YAML file: %s\033[0m\n", path)
+
+		fmt.Printf("\n\033[33mProposed changes for %s:\033[0m\n", path)
+		fmt.Println(strings.Repeat("=", 50))
 		fmt.Println(formatDiff(diff))
-		printSummary(diff)
+		fmt.Println(strings.Repeat("=", 50))
+
+		return countChanges(diff)
 	}
-	return nil
+
+	fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
+	return 0
 }
 
 func formatDiff(diff string) string {
 	var formattedDiff strings.Builder
 
 	for _, line := range strings.Split(diff, "\n") {
-		if strings.HasPrefix(line, "+") || strings.HasPrefix(line, "-") {
-			switch {
-			case strings.HasPrefix(line, "+"):
-				formattedDiff.WriteString("\033[32m" + line + "\033[0m")
-			case strings.HasPrefix(line, "-"):
-				formattedDiff.WriteString("\033[31m" + line + "\033[0m")
-			}
-			formattedDiff.WriteString("\n")
+		switch {
+		case strings.HasPrefix(line, "+"):
+			formattedDiff.WriteString("\033[32m" + line + "\033[0m")
+		case strings.HasPrefix(line, "-"):
+			formattedDiff.WriteString("\033[31m" + line + "\033[0m")
+		default:
+			formattedDiff.WriteString(line)
 		}
+
+		formattedDiff.WriteString("\n")
 	}
 
 	return formattedDiff.String()
 }
-
-func printSummary(diff string) {
-	added := 0
-	removed := 0
-	for _, line := range strings.Split(diff, "\n") {
-		if strings.HasPrefix(line, "+") {
-			added++
-		} else if strings.HasPrefix(line, "-") {
-			removed++
-		}
-	}
-
-	fmt.Printf("\033[1;36mSummary:\033[0m\n")
-	fmt.Printf("\033[32mAdded lines: %d\033[0m\n", added)
-	fmt.Printf("\033[31mRemoved lines: %d\033[0m\n\n", removed)
-}
-
 
 func formatYAML(data []byte) ([]byte, error) {
 	var yamlData interface{}
@@ -106,4 +105,16 @@ func formatYAML(data []byte) ([]byte, error) {
 	}
 
 	return formattedData, nil
+}
+
+func countChanges(diff string) int {
+	count := 0
+	for _, line := range strings.Split(diff, "\n") {
+		if strings.HasPrefix(line, "+") || strings.HasPrefix(line, "-") {
+			if !strings.HasPrefix(line, "+++") && !strings.HasPrefix(line, "---") {
+				count++
+			}
+		}
+	}
+	return count
 }
