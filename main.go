@@ -65,35 +65,31 @@ func formatYAMLFile(path string) error {
     return nil
 }
 
-func formatDiff(diff string) string {
-    var formattedDiff strings.Builder
-
-    for _, line := range strings.Split(diff, "\n") {
-        switch {
-        case strings.HasPrefix(line, "+"):
-            formattedDiff.WriteString("\033[32m" + line + "\033[0m")
-        case strings.HasPrefix(line, "-"):
-            formattedDiff.WriteString("\033[31m" + line + "\033[0m")
-        default:
-            formattedDiff.WriteString(line)
-        }
-
-        formattedDiff.WriteString("\n")
-    }
-
-    return formattedDiff.String()
-}
-
-func formatYAML(data []byte) ([]byte, error) {
-	var yamlData interface{}
-	if err := yaml.Unmarshal(data, &yamlData); err != nil {
-		return nil, err
-	}
-
-	formattedData, err := yaml.Marshal(yamlData)
+func processTerraformFile(filename string) {
+	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return nil, err
+		fmt.Println("Error reading file:", filename, err)
+		return
 	}
 
-	return formattedData, nil
+	ast, diags := hclwrite.ParseConfig(data, filename, nil)
+	if diags.HasErrors() {
+		fmt.Println("Error parsing file:", filename, diags.Error())
+		return
+	}
+
+	file := hclwrite.NewEmptyFile()
+	file.Body().SetNode(ast.Body())
+
+	formattedData := file.Bytes()
+
+	if string(data) != string(formattedData) {
+		fmt.Printf("Proposed changes for %s:\n", filename)
+		fmt.Println("-----------------------------------")
+		fmt.Println(string(formattedData))
+		fmt.Println("-----------------------------------")
+	} else {
+		fmt.Printf("No changes needed for %s\n", filename)
+	}
 }
+
