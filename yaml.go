@@ -95,6 +95,16 @@ func findErrorLineAndSuggestFix(data string, err error) (int, string, string) {
 	return -1, "", ""
 }
 
+func updateYAMLNodeStyle(node *yaml.Node) {
+	if node.Kind == yaml.MappingNode || node.Kind == yaml.SequenceNode {
+		node.Style = yaml.FlowStyle
+	}
+
+	for i := 0; i < len(node.Content); i++ {
+		updateYAMLNodeStyle(node.Content[i])
+	}
+}
+
 func showDiff(path, original, formatted string) {
 	dmp := diffmatchpatch.New()
 	diffs := dmp.DiffMain(original, formatted, false)
