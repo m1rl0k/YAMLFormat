@@ -184,40 +184,30 @@ func formatYAML(data []byte) ([]byte, error) {
 
 	return formattedData, nil
 }
-func traverseYAMLTreeCorrect(node interface{}) {
-	switch node := node.(type) {
-	case map[interface{}]interface{}:
-		for key, value := range node {
-			if mapValue, ok := value.(map[interface{}]interface{}); ok {
-				// recursively traverse nested map
-				traverseYAMLTreeCorrect(mapValue)
-			} else if listValue, ok := value.([]interface{}); ok {
-				// recursively traverse nested list
-				traverseYAMLListCorrect(listValue)
-			}
-			if keyStr, ok := key.(string); ok {
-				// correct key if necessary
-				if strings.Contains(keyStr, " ") {
-					delete(node, key)
-					node[strings.ReplaceAll(keyStr, " ", "_")] = value
-				}
-			}
-		}
-	case []interface{}:
-		traverseYAMLListCorrect(node)
-	}
-}
 
-func traverseYAMLListCorrect(node []interface{}) {
-	for _, value := range node {
-		if mapValue, ok := value.(map[interface{}]interface{}); ok {
-			// recursively traverse nested map
-			traverseYAMLTreeCorrect(mapValue)
-		} else if listValue, ok := value.([]interface{}); ok {
-			// recursively traverse nested list
-			traverseYAMLListCorrect(listValue)
-		}
-	}
+
+
+func traverseYAMLList(list []interface{}) {
+    for i, item := range list {
+        if mapValue, ok := item.(map[string]interface{}); ok {
+            // recursively traverse nested map
+            traverseYAMLTree(mapValue)
+        } else if nestedList, ok := item.([]interface{}); ok {
+            // recursively traverse nested list
+            traverseYAMLList(nestedList)
+        } else {
+            // handle case where value is not a map or list
+            switch item.(type) {
+            case map[interface{}]interface{}:
+                // convert map[interface{}]interface{} to map[string]interface{}
+                mapValue := make(map[string]interface{})
+                for k, v := range item.(map[interface{}]interface{}) {
+                    mapValue[fmt.Sprintf("%v", k)] = v
+                }
+                list[i] = mapValue
+            }
+        }
+    }
 }
 
 func removeEmptyNodes(node interface{}) interface{} {
