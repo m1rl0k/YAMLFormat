@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclwrite"
-	"github.com/hashicorp/hcl/v2/hclwrite/values"
 	"github.com/pmezard/go-difflib/difflib"
 )
 
@@ -52,7 +51,7 @@ func processTerraformFile(filename string) {
 	}
 
 	for name, attr := range content.Attributes {
-		tokens := values.AsHCLTokens(attr.Expr)
+		tokens := tokensForExpr(attr.Expr)
 		newBody.SetAttributeRaw(name, tokens)
 	}
 
@@ -60,7 +59,7 @@ func processTerraformFile(filename string) {
 		newBlock := newBody.AppendNewBlock(block.Type, block.Labels)
 		blockContent, _ := block.Body.Content(&hcl.BodySchema{})
 		for name, bAttr := range blockContent.Attributes {
-			tokens := values.AsHCLTokens(bAttr.Expr)
+			tokens := tokensForExpr(bAttr.Expr)
 			newBlock.Body().SetAttributeRaw(name, tokens)
 		}
 	}
@@ -84,5 +83,14 @@ func processTerraformFile(filename string) {
 		fmt.Println("-----------------------------------")
 	} else {
 		fmt.Printf("No changes needed for %s\n", filename)
+	}
+}
+
+func tokensForExpr(expr hcl.Expression) hclwrite.Tokens {
+	return hclwrite.Tokens{
+		{
+			Type:  hcl.TokenIdent,
+			Bytes: []byte(expr.Range().SliceBytes(nil)),
+		},
 	}
 }
