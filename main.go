@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pmezard/go-difflib/difflib"
 	"gopkg.in/yaml.v3"
 )
 
@@ -32,8 +33,6 @@ func processFile(path string, info os.FileInfo, err error) error {
 	ext := filepath.Ext(path)
 	if ext == ".yaml" || ext == ".yml" {
 		return formatYAMLFile(path)
-	} else if ext == ".hcl" {
-		return formatHCLFile(path)
 	} else if ext == ".tf" {
 		return formatTerraformFile(path)
 	}
@@ -58,38 +57,19 @@ func formatYAMLFile(path string) error {
 	}
 
 	if !strings.EqualFold(string(data), string(formattedData)) {
+		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+			A:        difflib.SplitLines(string(data)),
+			B:        difflib.SplitLines(string(formattedData)),
+			FromFile: "Original",
+			ToFile:   "Formatted",
+			Context:  3,
+		})
+		fmt.Printf("Differences in YAML file: %s\n", path)
+		fmt.Println(diff)
+
 		if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
 			return err
 		}
-		fmt.Printf("Formatted YAML file: %s\n", path)
-	}
-
-	return nil
-}
-
-func formatHCLFile(path string) error {
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		return err
-	}
-
-	file, diags := hclsyntax.ParseConfig(data, path, hcl.Pos{Line: 1, Column: 1})
-	if diags.HasErrors() {
-		return fmt.Errorf("Error parsing HCL file '%s': %s", path, diags.Error())
-	}
-
-	hclwriteFile := hclwrite.NewEmptyFile()
-	if err := file.Body().Build(hclwriteFile.Body()); err != nil {
-		return err
-	}
-
-	formattedData := hclwrite.Format(hclwriteFile.Bytes())
-
-	if !strings.EqualFold(string(data), string(formattedData)) {
-		if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
-			return err
-		}
-		fmt.Printf("Formatted HCL file: %s\n", path)
 	}
 
 	return nil
@@ -111,15 +91,23 @@ func formatTerraformFile(path string) error {
 		return err
 	}
 
-		formattedData := hclwrite.Format(hclwriteFile.Bytes())
+	formattedData := hclwrite.Format(hclwriteFile.Bytes())
 
 	if !strings.EqualFold(string(data), string(formattedData)) {
-		if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
+		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+			A:        difflib.SplitLines(string(data)),
+			B:        difflib.SplitLines(string(formattedData)),
+			FromFile: "Original",
+			ToFile:   "Formatted",
+			Context:  3,
+		})
+		fmt.Printf("Differences in Terraform file: %s\n", path)
+		fmt.Println(diff)
+
+				if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
 			return err
 		}
-		fmt.Printf("Formatted Terraform file: %s\n", path)
 	}
 
 	return nil
 }
-
