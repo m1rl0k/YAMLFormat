@@ -75,7 +75,7 @@ func formatYAMLFile(path string) error {
 	return nil
 }
 
-func func formatTerraformFile(path string) error {
+func formatTerraformFile(path string) error {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
@@ -115,4 +115,3 @@ func func formatTerraformFile(path string) error {
 
 	return nil
 }
-
