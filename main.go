@@ -109,7 +109,7 @@ func formatTerraformFile(path string) error {
 		return fmt.Errorf("Error parsing Terraform file '%s': %s", path, diags.Error())
 	}
 
-	jsonBytes, err := json.Marshal(file.Body)
+	jsonBytes, err := json.Marshal(file.Body())
 	if err != nil {
 		return err
 	}
@@ -130,3 +130,4 @@ func formatTerraformFile(path string) error {
 
 	return nil
 }
+
