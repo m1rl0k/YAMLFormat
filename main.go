@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -83,15 +82,8 @@ func formatTerraformFile(path string) error {
 		return fmt.Errorf("Error parsing Terraform file '%s': %s", path, diags.Error())
 	}
 
-	jsonBytes, err := json.Marshal(file.Body())
-	if err != nil {
-		return err
-	}
-
-	hclwriteFile, err := hclwrite.ParseJSON(jsonBytes, path)
-	if err != nil {
-		return err
-	}
+	hclwriteFile := hclwrite.NewEmptyFile()
+	hclwriteGo(file.Body, hclwriteFile.Body())
 
 	formattedData := hclwrite.Format(hclwriteFile.Bytes())
 
@@ -108,4 +100,14 @@ func formatTerraformFile(path string) error {
 	}
 
 	return nil
+}
+
+func hclwriteGo(src hcl.Body, dst *hclwrite.Body) {
+	for _, block := range src.Blocks() {
+		dst.AppendBlock(block.Type, block.Labels).SetBody(block.Body)
+	}
+
+	for name, attr := range src.Attributes() {
+		dst.SetAttribute(name, attr.Expr)
+	}
 }
