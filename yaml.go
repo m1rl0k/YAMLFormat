@@ -3,112 +3,73 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
-	"regexp"
-	"strconv"
+	"path/filepath"
 	"strings"
 
-	"github.com/fatih/color"
-	"github.com/ghodss/yaml"
-	"github.com/pmezard/go-difflib/difflib"
+	"github.com/sergi/go-diff/diffmatchpatch"
 	"gopkg.in/yaml.v3"
 )
 
 func main() {
-	files, err := ioutil.ReadDir(".")
+	// Get the current working directory
+	wd, err := os.Getwd()
 	if err != nil {
-		fmt.Println("Error reading directory:", err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 
-	for _, f := range files {
-		if strings.HasSuffix(f.Name(), ".yaml") || strings.HasSuffix(f.Name(), ".yml") {
-			lintYAMLFile(f.Name())
+	// Read and process all YAML files in the directory
+	err = filepath.Walk(wd, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
 		}
+
+		if !info.IsDir() && (strings.HasSuffix(info.Name(), ".yaml") || strings.HasSuffix(info.Name(), ".yml")) {
+			processYAMLFile(path)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		log.Fatal(err)
 	}
 }
 
-func lintYAMLFile(filename string) {
-	data, err := ioutil.ReadFile(filename)
+func processYAMLFile(path string) {
+	// Read the YAML file
+	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		fmt.Println("Error reading file:", filename, err)
+		log.Printf("Error reading file %s: %v\n", path, err)
 		return
 	}
 
-	var parsedData interface{}
-	err = yaml.Unmarshal(data, &parsedData)
+	// Parse the YAML content
+	var parsedContent yaml.Node
+	err = yaml.Unmarshal(data, &parsedContent)
 	if err != nil {
-		fmt.Printf("\033[31mSyntax issues found in %s:\033[0m\n", filename)
-		fmt.Println(err)
-		provideSuggestions(string(data), err)
-	} else {
-		fmt.Printf("\033[32mNo syntax issues found in %s\n\033[0m", filename)
+		log.Printf("Error parsing YAML in file %s: %v\n", path, err)
+		return
 	}
+
+	// Format the parsed YAML content
+	formatted, err := yaml.Marshal(&parsedContent)
+	if err != nil {
+		log.Printf("Error formatting YAML in file %s: %v\n", path, err)
+		return
+	}
+
+	// Generate and display the diff
+	showDiff(path, string(data), string(formatted))
 }
 
-func provideSuggestions(data string, yamlErr error) {
-	lines := strings.Split(data, "\n")
+func showDiff(path, original, formatted string) {
+	dmp := diffmatchpatch.New()
+	diffs := dmp.DiffMain(original, formatted, false)
 
-	re := regexp.MustCompile(`line (\d+):`)
-	matches := re.FindStringSubmatch(yamlErr.Error())
-	if len(matches) > 1 {
-		lineNum := matches[1]
-		fmt.Printf("\033[33mSuggestion for line %s:\033[0m\n", lineNum)
-
-		// Common issues
-		fmt.Println("1. Check indentation, use two spaces for each level.")
-		fmt.Println("2. Ensure there is a space after colons.")
-		fmt.Println("3. Verify that there are no tabs or extra spaces before or after keys and values.")
-		fmt.Println("4. Check for missing or misplaced quotes for string values.")
-
-		// Display the affected line
-		line, err := strconv.Atoi(lineNum)
-		if err == nil && line-1 < len(lines) {
-			fmt.Printf("\033[34mAffected line:\033[0m\n%s\n", lines[line-1])
-		}
-	} else {
-		fmt.Println("\033[33mGeneral suggestions:\033[0m")
-		fmt.Println("1. Check the entire YAML file for correct syntax and structure.")
-		fmt.Println("2. Use a YAML linter or validator to identify and fix specific issues.")
-	}
-
-	fixedData := fixCommonIssues(data)
-	if fixedData != data {
-		diff := difflib.UnifiedDiff{
-			A:        difflib.SplitLines(data),
-			B:        difflib.SplitLines(fixedData),
-			FromFile: "Original",
-			ToFile:   "Fixed",
-			Context:  3,
-		}
-		diffStr, _ := difflib.GetUnifiedDiffString(diff)
-
-		fmt.Println("\n\033[33mProposed changes:\033[0m")
-		colorDiff(diffStr)
+	if len(diffs) > 1 {
+		fmt.Printf("Differences in file %s:\n", path)
+		fmt.Println(dmp.DiffPrettyText(diffs))
 	}
 }
-
-func fixCommonIssues(data string) string {
-	// Fix common issues like removing extra spaces and replacing tabs with spaces
-	fixedLines := []string{}
-	for _, line := range strings.Split(data, "\n") {
-		fixedLine := strings.ReplaceAll(line, "\t", "  ") // Replace tabs with two spaces
-		fixedLine = strings.TrimSpace(fixedLine)         // Remove extra spaces at the beginning and end of the line
-		fixedLines = append(fixedLines, fixedLine)
-	}
-	return strings.Join(fixedLines, "\n")
-}
-
-func colorDiff(diffStr string) {
-	for _, line := range strings.Split(diffStr, "\n") {
-		switch {
-		case strings.HasPrefix(line, "+"):
-			color.Green(line)
-		case strings.HasPrefix(line, "-"):
-			color.Red(line)
-		default:
-			fmt.Println(line)
-		}
-	}
-}
-
