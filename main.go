@@ -135,7 +135,7 @@ func correctYAMLData(data []byte) ([]byte, bool, error) {
 	}
 	
 	// Recursively traverse the YAML tree and correct any formatting errors
-	corrected := traverseYAMLTreeCorrect(yamlData)
+	corrected := traverseYAMLTree(yamlData)
 	
 	// If corrections were made, reformat the YAML data and return it
 	if corrected {
