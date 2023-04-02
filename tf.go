@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-        "github.com/fatih/color"
+	"github.com/fatih/color"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclwrite"
@@ -44,32 +44,22 @@ func processTerraformFile(filename string) {
 	file := hclwrite.NewEmptyFile()
 	newBody := file.Body()
 
-	content, _, diags := f.Body.PartialContent(&hcl.BodySchema{
-		Any: true,
-	})
+	content, diags := f.Body.Content(&hcl.BodySchema{})
 	if diags.HasErrors() {
 		fmt.Println("Error decoding body:", filename, diags.Error())
 		return
 	}
 
 	for name, attr := range content.Attributes {
-		tokens, err := hclwrite.TokensForExpr(attr.Expr)
-		if err != nil {
-			fmt.Println("Error converting expression to tokens:", err)
-			return
-		}
+		tokens := hclwrite.TokensForValue(attr.Expr.Range().SliceBytes(data))
 		newBody.SetAttributeRaw(name, tokens)
 	}
 
 	for _, block := range content.Blocks {
 		newBlock := newBody.AppendNewBlock(block.Type, block.Labels)
-		blockContent, _, _ := block.Body.PartialContent(&hcl.BodySchema{Any: true})
+		blockContent, _ := block.Body.Content(&hcl.BodySchema{})
 		for name, bAttr := range blockContent.Attributes {
-			tokens, err := hclwrite.TokensForExpr(bAttr.Expr)
-			if err != nil {
-				fmt.Println("Error converting block expression to tokens:", err)
-				return
-			}
+			tokens := hclwrite.TokensForValue(bAttr.Expr.Range().SliceBytes(data))
 			newBlock.Body().SetAttributeRaw(name, tokens)
 		}
 	}
