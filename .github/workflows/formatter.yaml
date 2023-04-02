@@ -25,7 +25,8 @@ jobs:
 
       - name: Build formatter
         run: |
-       
+         cd ../..
+
          go run main.go
 
 
