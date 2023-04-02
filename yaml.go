@@ -107,14 +107,38 @@ func showDiff(path, original, formatted string) {
 	}
 }
 
-func updateYAMLNodeStyle(node *yaml.Node) {
-	if node.Kind == yaml.MappingNode || node.Kind == yaml.SequenceNode {
-		node.Style = yaml.FlowStyle
-	}
+func showDiff(path, original, formatted string) {
+	dmp := diffmatchpatch.New()
+	diffs := dmp.DiffMain(original, formatted, false)
 
-	for i := 0; i < len(node.Content); i++ {
-		updateYAMLNodeStyle(node.Content[i])
+	if len(diffs) > 1 {
+		fmt.Printf("Differences in file %s:\n", path)
+		coloredOutput := diffToColoredYAMLText(diffs)
+		colorable.NewColorableStdout().Write([]byte(coloredOutput))
+		fmt.Println()
 	}
+}
+
+func diffToColoredYAMLText(diffs []diffmatchpatch.Diff) string {
+	var output strings.Builder
+	for _, diff := range diffs {
+		text := diff.Text
+
+		if diff.Type == diffmatchpatch.DiffInsert {
+			// Green for inserted lines
+			output.WriteString("\x1b[32m")
+			output.WriteString(text)
+			output.WriteString("\x1b[0m")
+		} else if diff.Type == diffmatchpatch.DiffDelete {
+			// Red for deleted lines
+			output.WriteString("\x1b[31m")
+			output.WriteString(text)
+			output.WriteString("\x1b[0m")
+		} else {
+			output.WriteString(text)
+		}
+	}
+	return output.String()
 }
 
 func suggestFixForLine(line string) string {
