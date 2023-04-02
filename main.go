@@ -81,13 +81,11 @@ func formatHCLFile(path string) error {
 	}
 
 	hclwriteFile := hclwrite.NewEmptyFile()
-	if err := file.Body.Build(hclwriteFile.Body()); err != nil {
-		return err
-	}
+	hclwriteFile.Body().SetAttributeTraversal("dummy", file.Body())
 
 	formattedData := hclwrite.Format(hclwriteFile.Bytes())
 
-	if !strings.EqualFold(string(data), string(formattedData)) {
+	if !bytes.Equal(data, formattedData) {
 		if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
 			return err
 		}
