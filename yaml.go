@@ -8,6 +8,9 @@ import (
 
 	"github.com/pmezard/go-difflib/difflib"
 	"gopkg.in/yaml.v3"
+	"strings"
+
+	"github.com/ghodss/yaml"
 )
 
 func main() {
@@ -17,106 +20,55 @@ func main() {
 		os.Exit(1)
 	}
 
-	totalChanges := 0
-
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), ".yaml") || strings.HasSuffix(f.Name(), ".yml") {
-			changes := processYAMLFile(f.Name())
-			totalChanges += changes
+			lintYAMLFile(f.Name())
 		}
 	}
-
-	fmt.Printf("\n\033[1mTotal changes: %d\033[0m\n", totalChanges)
 }
 
-func processYAMLFile(filename string) int {
+func lintYAMLFile(filename string) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		fmt.Println("Error reading file:", filename, err)
-		return 0
+		return
 	}
 
 	var parsedData interface{}
 	err = yaml.Unmarshal(data, &parsedData)
 	if err != nil {
-		fmt.Println("Error parsing file:", filename, err)
-		fmt.Println("Attempting to fix common formatting errors...")
-
-		fixedData, fixed := fixCommonYAMLErrors(string(data))
-		if !fixed {
-			fmt.Println("Failed to fix formatting errors.")
-			return 0
-		}
-		err = yaml.Unmarshal([]byte(fixedData), &parsedData)
-		if err != nil {
-			fmt.Println("Error parsing fixed data:", filename, err)
-			return 0
-		}
-		data = []byte(fixedData)
-	}
-
-	formattedData, err := yaml.Marshal(parsedData)
-	if err != nil {
-		fmt.Println("Error formatting file:", filename, err)
-		return 0
-	}
-
-	if string(data) != string(formattedData) {
-		diff := difflib.UnifiedDiff{
-			A:        difflib.SplitLines(string(data)),
-			B:        difflib.SplitLines(string(formattedData)),
-			FromFile: "Original",
-			ToFile:   "Formatted",
-			Context:  3,
-		}
-		diffStr, _ := difflib.GetUnifiedDiffString(diff)
-
-		fmt.Printf("\n\033[33mProposed changes for %s:\033[0m\n", filename)
-		fmt.Println(strings.Repeat("=", 50))
-		fmt.Println(formatDiff(diffStr))
-		fmt.Println(strings.Repeat("=", 50))
-
-		return countChanges(diffStr)
+		fmt.Printf("\033[31mSyntax issues found in %s:\033[0m\n", filename)
+		fmt.Println(err)
+		provideSuggestions(string(data), err)
 	} else {
-		fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", filename)
-		return 0
+		fmt.Printf("\033[32mNo syntax issues found in %s\n\033[0m", filename)
 	}
 }
 
-func fixCommonYAMLErrors(input string) (string, bool) {
-	fixedData := strings.ReplaceAll(input, ": ", ":")
-	fixedData = strings.ReplaceAll(fixedData, "\t", "  ")
-	return fixedData, true
-}
+func provideSuggestions(data string, yamlErr error) {
+	lines := strings.Split(data, "\n")
 
+	re := regexp.MustCompile(`line (\d+):`)
+	matches := re.FindStringSubmatch(yamlErr.Error())
+	if len(matches) > 1 {
+		lineNum := matches[1]
+		fmt.Printf("\033[33mSuggestion for line %s:\033[0m\n", lineNum)
 
-func formatDiff(diff string) string {
-	var formattedDiff strings.Builder
+		// Common issues
+		fmt.Println("1. Check indentation, use two spaces for each level.")
+		fmt.Println("2. Ensure there is a space after colons.")
+		fmt.Println("3. Verify that there are no tabs or extra spaces before or after keys and values.")
+		fmt.Println("4. Check for missing or misplaced quotes for string values.")
 
-	for _, line := range strings.Split(diff, "\n") {
-		switch {
-		case strings.HasPrefix(line, "+"):
-			formattedDiff.WriteString("\033[32m" + line + "\033[0m")
-		case strings.HasPrefix(line, "-"):
-			formattedDiff.WriteString("\033[31m" + line + "\033[0m")
-		default:
-			formattedDiff.WriteString(line)
+		// Display the affected line
+		line, err := strconv.Atoi(lineNum)
+		if err == nil && line-1 < len(lines) {
+			fmt.Printf("\033[34mAffected line:\033[0m\n%s\n", lines[line-1])
 		}
-
-		formattedDiff.WriteString("\n")
+	} else {
+		fmt.Println("\033[33mGeneral suggestions:\033[0m")
+		fmt.Println("1. Check the entire YAML file for correct syntax and structure.")
+		fmt.Println("2. Use a YAML linter or validator to identify and fix specific issues.")
 	}
-
-	return formattedDiff.String()
 }
 
-func countChanges(diff string) int {
-	count := 0
-	for _, line := range strings.Split(diff, "\n") {
-		if strings.HasPrefix(line, "+") || strings.HasPrefix(line, "-") {
-			if !strings.HasPrefix(line, "+++") && !strings.HasPrefix(line, "---") {
-				count++
-			}
-		}
-	}
-	return count
-}
