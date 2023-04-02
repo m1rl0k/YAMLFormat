@@ -4,6 +4,6 @@ key2:
 - item2
 key3:
   subkey1: subvalue1
-    subkey2:
+    subkey2
   - subitem1
   - subitem2
