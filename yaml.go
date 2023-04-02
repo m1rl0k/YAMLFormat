@@ -40,7 +40,19 @@ func processYAMLFile(filename string) int {
 	err = yaml.Unmarshal(data, &parsedData)
 	if err != nil {
 		fmt.Println("Error parsing file:", filename, err)
-		return 0
+		fmt.Println("Attempting to fix common formatting errors...")
+
+		fixedData, fixed := fixCommonYAMLErrors(string(data))
+		if !fixed {
+			fmt.Println("Failed to fix formatting errors.")
+			return 0
+		}
+		err = yaml.Unmarshal([]byte(fixedData), &parsedData)
+		if err != nil {
+			fmt.Println("Error parsing fixed data:", filename, err)
+			return 0
+		}
+		data = []byte(fixedData)
 	}
 
 	formattedData, err := yaml.Marshal(parsedData)
@@ -70,6 +82,13 @@ func processYAMLFile(filename string) int {
 		return 0
 	}
 }
+
+func fixCommonYAMLErrors(input string) (string, bool) {
+	fixedData := strings.ReplaceAll(input, ": ", ":")
+	fixedData = strings.ReplaceAll(fixedData, "\t", "  ")
+	return fixedData, true
+}
+
 
 func formatDiff(diff string) string {
 	var formattedDiff strings.Builder
