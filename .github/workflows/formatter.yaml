@@ -1,4 +1,4 @@
-name: Format Yaml
+name: Format
 
 on:
   push:
