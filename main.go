@@ -2,6 +2,7 @@
  package main
 
  import (
+        "bytes"
  	"encoding/json"
  	"fmt"
  	"io/ioutil"
@@ -82,7 +83,8 @@ func formatHCLFile(path string) error {
 	}
 
 	hclwriteFile := hclwrite.NewEmptyFile()
-	if err := hclwriteFile.Body().Build(file.Body()); err != nil {
+	if err := file.Build(hclwriteFile); err != nil {
+
 		return err
 	}
 
