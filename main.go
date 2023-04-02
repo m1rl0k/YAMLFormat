@@ -80,15 +80,13 @@ func formatHCLFile(path string) error {
 		return fmt.Errorf("Error parsing HCL file '%s': %s", path, diags.Error())
 	}
 
-	hclwriteFile := hclwrite.NewEmptyFile()
-	if err := file.Body().Build(hclwriteFile.Body()); err != nil {
+	hclwriteFile, err := hclwrite.Format(file)
+	if err != nil {
 		return err
 	}
 
-	formattedData := hclwrite.Format(hclwriteFile.Bytes())
-
-	if !strings.EqualFold(string(data), string(formattedData)) {
-		if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
+	if !bytes.Equal(data, hclwriteFile) {
+		if err := ioutil.WriteFile(path, hclwriteFile, 0644); err != nil {
 			return err
 		}
 		fmt.Printf("Formatted HCL file: %s\n", path)
