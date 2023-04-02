@@ -104,7 +104,12 @@ func showDiff(path, original, formatted string) {
         // loop through deltas
         pos := 0
         for _, delta := range deltas {
-            if delta.DeltaType == diffmatchpatch.DiffEqual {
+            switch delta[0] {
+            case '+':
+                fmt.Println("Added:")
+            case '-':
+                fmt.Println("Removed:")
+            case '=':
                 pos += delta.Length1
                 continue
             }
