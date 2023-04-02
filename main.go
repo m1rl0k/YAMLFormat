@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"gopkg.in/yaml.v3"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
 func main() {
@@ -70,7 +71,7 @@ func formatHCLFile(path string) error {
 		return err
 	}
 
-	file, diags := hcl.Parse(string(data))
+	file, diags := hclsyntax.Parse(data, path, hcl.Pos{Line: 1, Column: 1})
 	if diags.HasErrors() {
 		return fmt.Errorf("Error parsing HCL file '%s': %s", path, diags.Error())
 	}
