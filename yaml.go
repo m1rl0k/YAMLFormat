@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+        "unicode"
 
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"gopkg.in/yaml.v3"
