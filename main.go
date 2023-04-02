@@ -85,7 +85,7 @@ func formatHCLFile(path string) error {
 		return err
 	}
 
-	hclwriteFile, err := hclwrite.ParseConfig(jsonBytes, path, hclwrite.ParseOpts{})
+	hclwriteFile, err := hclwrite.ParseJSON(jsonBytes, path)
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func formatTerraformFile(path string) error {
 		return err
 	}
 
-	hclwriteFile, err := hclwrite.ParseConfig(jsonBytes, path, hclwrite.ParseOpts{})
+	hclwriteFile, err := hclwrite.ParseJSON(jsonBytes, path)
 	if err != nil {
 		return err
 	}
