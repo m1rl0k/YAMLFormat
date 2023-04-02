@@ -97,11 +97,42 @@ func showDiff(path, original, formatted string) {
 
 	if len(diffs) > 1 {
 		fmt.Printf("Differences in file %s:\n", path)
-		coloredOutput := dmp.DiffPrettyText(diffs)
-		fmt.Print(coloredOutput)
-		fmt.Println()
+
+		deltas := dmp.DiffToDelta(diffs)
+		originalLines := strings.Split(original, "\n")
+		formattedLines := strings.Split(formatted, "\n")
+
+		pos := 0
+		for _, delta := range deltas {
+			if delta.Type == diffmatchpatch.DiffEqual {
+				pos += delta.Length1
+				continue
+			}
+
+			start := pos - 12
+			if start < 0 {
+				start = 0
+			}
+			end := pos + 12
+			if end >= len(originalLines) {
+				end = len(originalLines) - 1
+			}
+
+			fmt.Println("Original:")
+			for i := start; i <= end; i++ {
+				fmt.Printf("%4d: %s\n", i+1, originalLines[i])
+			}
+
+			fmt.Println("Formatted:")
+			for i := start; i <= end; i++ {
+				fmt.Printf("%4d: %s\n", i+1, formattedLines[i])
+			}
+
+			pos += delta.Length1
+		}
 	}
 }
+
 func suggestFixForLine(line string) string {
 	fixedLine := line
 
