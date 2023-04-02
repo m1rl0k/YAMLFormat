@@ -52,13 +52,24 @@ func processTerraformFile(filename string) {
 	}
 
 	for name, attr := range content.Attributes {
-		newBody.SetAttributeRaw(name, hclwrite.TokensForValue(attr.Expr))
+		tokens, err := hclwrite.TokensForExpr(attr.Expr)
+		if err != nil {
+			fmt.Println("Error converting expression to tokens:", err)
+			return
+		}
+		newBody.SetAttributeRaw(name, tokens)
 	}
 
 	for _, block := range content.Blocks {
 		newBlock := newBody.AppendNewBlock(block.Type, block.Labels)
-		for _, bAttr := range block.Body.Attributes() {
-			newBlock.Body().SetAttributeRaw(bAttr.Name, hclwrite.TokensForValue(bAttr.Expr))
+		blockContent, _, _ := block.Body.PartialContent(&hcl.BodySchema{Any: true})
+		for name, bAttr := range blockContent.Attributes {
+			tokens, err := hclwrite.TokensForExpr(bAttr.Expr)
+			if err != nil {
+				fmt.Println("Error converting block expression to tokens:", err)
+				return
+			}
+			newBlock.Body().SetAttributeRaw(name, tokens)
 		}
 	}
 
@@ -83,4 +94,5 @@ func processTerraformFile(filename string) {
 		fmt.Printf("No changes needed for %s\n", filename)
 	}
 }
+
 
