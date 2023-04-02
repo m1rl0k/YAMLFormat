@@ -300,3 +300,4 @@ func traverseYAMLTree(node interface{}) {
                 }
             }
         }
+}
