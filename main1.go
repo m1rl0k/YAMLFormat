@@ -1,5 +1,4 @@
-package tf
-
+package main
 
 func formatTerraformFile(path string) error {
     data, err := ioutil.ReadFile(path)
