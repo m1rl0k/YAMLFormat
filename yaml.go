@@ -5,12 +5,11 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-
+        
+        "github.com/ghodss/yaml"
 	"github.com/pmezard/go-difflib/difflib"
 	"gopkg.in/yaml.v3"
-	"strings"
 
-	"github.com/ghodss/yaml"
 )
 
 func main() {
