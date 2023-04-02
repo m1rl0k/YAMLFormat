@@ -81,7 +81,7 @@ func formatHCLFile(path string) error {
 	}
 
 	hclwriteFile := hclwrite.NewEmptyFile()
-	if err := file.Body().Build(hclwriteFile.Body()); err != nil {
+	if err := file.Body.Build(hclwriteFile.Body()); err != nil {
 		return err
 	}
 
@@ -96,7 +96,6 @@ func formatHCLFile(path string) error {
 
 	return nil
 }
-
 
 func formatTerraformFile(path string) error {
 	data, err := ioutil.ReadFile(path)
