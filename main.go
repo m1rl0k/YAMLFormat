@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -79,12 +80,12 @@ func formatHCLFile(path string) error {
 		return fmt.Errorf("Error parsing HCL file '%s': %s", path, diags.Error())
 	}
 
-	jsonBytes, err := json.Marshal(file.Body())
+	jsonBytes, err := json.Marshal(file.Body)
 	if err != nil {
 		return err
 	}
 
-	hclwriteFile, err := hclwrite.ParseJSON(jsonBytes, path)
+	hclwriteFile, err := hclwrite.ParseConfig(jsonBytes, path, hclwrite.ParseOpts{})
 	if err != nil {
 		return err
 	}
@@ -100,6 +101,7 @@ func formatHCLFile(path string) error {
 
 	return nil
 }
+
 func formatTerraformFile(path string) error {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -111,12 +113,12 @@ func formatTerraformFile(path string) error {
 		return fmt.Errorf("Error parsing Terraform file '%s': %s", path, diags.Error())
 	}
 
-	jsonBytes, err := json.Marshal(file.Body())
+	jsonBytes, err := json.Marshal(file.Body)
 	if err != nil {
 		return err
 	}
 
-	hclwriteFile, err := hclwrite.ParseJSON(jsonBytes, path)
+	hclwriteFile, err := hclwrite.ParseConfig(jsonBytes, path, hclwrite.ParseOpts{})
 	if err != nil {
 		return err
 	}
