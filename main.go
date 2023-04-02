@@ -107,9 +107,42 @@ func showDiff(path, original, formatted string) {
 
 	if len(diffs) > 1 {
 		fmt.Printf("Differences in file %s:\n", path)
-		fmt.Println(dmp.DiffPrettyText(diffs))
+
+		deltas := dmp.DiffToDelta(diffs)
+		originalLines := strings.Split(original, "\n")
+		formattedLines := strings.Split(formatted, "\n")
+
+		pos := 0
+		for _, delta := range deltas {
+			if delta.Type == diffmatchpatch.DiffEqual {
+				pos += delta.Length1
+				continue
+			}
+
+			start := pos - 12
+			if start < 0 {
+				start = 0
+			}
+			end := pos + 12
+			if end >= len(originalLines) {
+				end = len(originalLines) - 1
+			}
+
+			fmt.Println("Original:")
+			for i := start; i <= end; i++ {
+				fmt.Printf("%4d: %s\n", i+1, originalLines[i])
+			}
+
+			fmt.Println("Formatted:")
+			for i := start; i <= end; i++ {
+				fmt.Printf("%4d: %s\n", i+1, formattedLines[i])
+			}
+
+			pos += delta.Length1
+		}
 	}
 }
+
 func findErrorLineAndSuggestFix(data string, err error) (int, string, string) {
 	var line, column int
 
