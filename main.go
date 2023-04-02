@@ -35,13 +35,17 @@ func main() {
 		}
 		ext := filepath.Ext(path)
 		if ext == ".yaml" || ext == ".yml" {
-			changes, err := formatYAMLFile(path)
+			changes, formattedData, err := formatYAMLFile(path)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error formatting file %s: %v\n", path, err)
+				fmt.Println("Error formatting file", path, ":", err)
 				return nil
 			}
 			if changes > 0 {
 				changedFiles = append(changedFiles, path)
+				if err := ioutil.WriteFile(path, formattedData, info.Mode()); err != nil {
+					fmt.Println("Error writing formatted file", path, ":", err)
+					return nil
+				}
 			}
 			totalChanges += changes
 		}
@@ -63,6 +67,7 @@ func main() {
 		fmt.Println("\n\033[32mNo changes needed\033[0m")
 	}
 }
+
 
 func formatYAMLFile(path string) (int, []byte, error) {
 	data, err := ioutil.ReadFile(path)
