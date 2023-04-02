@@ -88,25 +88,7 @@ func formatTerraformFile(path string) error {
 
 	hclwriteFile := hclwrite.NewEmptyFile()
 	body := hclwriteFile.Body()
-	file.Body().Walk(func(node hclsyntax.Node) (bool, error) {
-		switch n := node.(type) {
-		case *hclsyntax.Attribute:
-			attr := body.SetAttribute(n.Name, hclwrite.ExpressionFromExpr(n.Expr))
-			attr.Range = n.Range()
-			attr.SrcRange = n.SrcRange
-			attr.Expr.Range = n.Expr.Range()
-			attr.Expr.SrcRange = n.Expr.SrcRange()
-		case *hclsyntax.Block:
-			block := body.AppendNewBlock(n.Type, n.Labels)
-			block.Range = n.Range()
-			block.SrcRange = n.SrcRange
-			n.Body.Walk(func(node hclsyntax.Node) (bool, error) {
-				block.Body().AppendUnstructuredTokens(hclwrite.TokensForNode(node))
-				return true, nil
-			})
-		}
-		return true, nil
-	})
+	hclwrite.Go(file.Body(), body)
 
 	formattedData := hclwrite.Format(hclwriteFile.Bytes())
 
@@ -128,3 +110,4 @@ func formatTerraformFile(path string) error {
 
 	return nil
 }
+
