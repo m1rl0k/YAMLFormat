@@ -121,51 +121,50 @@ func formatDiff(diff string) string {
 }
 
 func formatYAML(data []byte) ([]byte, error) {
-    var yamlData interface{}
-    if err := yaml.Unmarshal(data, &yamlData); err != nil {
-        return nil, err
-    }
+	var yamlData interface{}
+	if err := yaml.Unmarshal(data, &yamlData); err != nil {
+		return nil, err
+	}
 
-    // recursively traverse the YAML tree and correct any formatting errors
-    traverseYAMLTree(yamlData)
+	traverseYAMLTree(yamlData)
 
-    formattedData, err := yaml.Marshal(yamlData)
-    if err != nil {
-        return nil, err
-    }
+	formattedData, err := yaml.Marshal(yamlData)
+	if err != nil {
+		return nil, err
+	}
 
-    return formattedData, nil
+	return formattedData, nil
 }
 
 func traverseYAMLTree(node interface{}) {
-    switch node := node.(type) {
-    case map[string]interface{}:
-        for _, value := range node {
-            if mapValue, ok := value.(map[string]interface{}); ok {
-                // recursively traverse nested map
-                traverseYAMLTree(mapValue)
-            } else if listValue, ok := value.([]interface{}); ok {
-                // recursively traverse nested list
-                traverseYAMLList(listValue)
-            }
-        }
-    case []interface{}:
-        traverseYAMLList(node)
-    }
+	switch node := node.(type) {
+	case map[string]interface{}:
+		for key, value := range node {
+			if mapValue, ok := value.(map[string]interface{}); ok {
+				// recursively traverse nested map
+				traverseYAMLTree(mapValue)
+			} else if listValue, ok := value.([]interface{}); ok {
+				// recursively traverse nested list
+				traverseYAMLList(listValue)
+			}
+		}
+	case []interface{}:
+		traverseYAMLList(node)
+	}
 }
-
 
 func traverseYAMLList(list []interface{}) {
-    for _, value := range list {
-        if mapValue, ok := value.(map[string]interface{}); ok {
-            // recursively traverse nested map
-            traverseYAMLTree(mapValue)
-        } else if listValue, ok := value.([]interface{}); ok {
-            // recursively traverse nested list
-            traverseYAMLList(listValue)
-        }
-    }
+	for _, value := range list {
+		if mapValue, ok := value.(map[string]interface{}); ok {
+			// recursively traverse nested map
+			traverseYAMLTree(mapValue)
+		} else if listValue, ok := value.([]interface{}); ok {
+			// recursively traverse nested list
+			traverseYAMLList(listValue)
+		}
+	}
 }
+
 
 func countChanges(diff string) int {
 	count := 0
