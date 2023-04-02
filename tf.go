@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/fatih/color"
@@ -41,7 +40,9 @@ func processTerraformFile(filename string) {
 		return
 	}
 
-	formattedData := hclwrite.Render(f)
+	file := hclwrite.NewEmptyFile()
+	file.Body().SetNode(f.Body)
+	formattedData := file.Bytes()
 
 	if string(data) != string(formattedData) {
 		diff := difflib.UnifiedDiff{
