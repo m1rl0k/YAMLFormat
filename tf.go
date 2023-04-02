@@ -3,8 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
-	"path/filepath"
+	"os
 	"strings"
 
 	"github.com/hashicorp/hcl/v2/hclwrite"
