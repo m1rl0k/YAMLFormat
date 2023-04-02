@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/mattn/go-colorable"
@@ -72,10 +74,17 @@ func processYAMLFile(path string) {
 }
 
 func findErrorLineAndSuggestFix(data string, err error) (int, string, string) {
-	var line, column int
+	line := -1
 
-	if syntaxErr, ok := err.(*yaml.SyntaxError); ok {
-		line, column = syntaxErr.Line, syntaxErr.Column
+	// Use a regex to extract the line number from the error message
+	re := regexp.MustCompile(`line (\d+):`)
+	matches := re.FindStringSubmatch(err.Error())
+	if len(matches) > 1 {
+		var convErr error
+		line, convErr = strconv.Atoi(matches[1])
+		if convErr != nil {
+			line = -1
+		}
 	}
 
 	lines := strings.Split(data, "\n")
@@ -86,15 +95,6 @@ func findErrorLineAndSuggestFix(data string, err error) (int, string, string) {
 	return -1, "", ""
 }
 
-func updateYAMLNodeStyle(node *yaml.Node) {
-	if node.Kind == yaml.MappingNode || node.Kind == yaml.SequenceNode {
-		node.Style = yaml.FlowStyle
-	}
-
-	for i := 0; i < len(node.Content); i++ {
-		updateYAMLNodeStyle(node.Content[i])
-	}
-}
 func showDiff(path, original, formatted string) {
 	dmp := diffmatchpatch.New()
 	diffs := dmp.DiffMain(original, formatted, false)
@@ -104,6 +104,16 @@ func showDiff(path, original, formatted string) {
 		coloredOutput := dmp.DiffPrettyHtml(diffs)
 		colorable.NewColorableStdout().Write([]byte(coloredOutput))
 		fmt.Println()
+	}
+}
+
+func updateYAMLNodeStyle(node *yaml.Node) {
+	if node.Kind == yaml.MappingNode || node.Kind == yaml.SequenceNode {
+		node.Style = yaml.FlowStyle
+	}
+
+	for i := 0; i < len(node.Content); i++ {
+		updateYAMLNodeStyle(node.Content[i])
 	}
 }
 
