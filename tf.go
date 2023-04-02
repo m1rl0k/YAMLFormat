@@ -51,7 +51,7 @@ func processTerraformFile(filename string) {
 	}
 
 	for name, attr := range content.Attributes {
-		tokens := attr.Expr.BuildTokens(nil)
+		tokens := hclwrite.TokensForExpr(attr.Expr)
 		newBody.SetAttributeRaw(name, tokens)
 	}
 
@@ -59,7 +59,7 @@ func processTerraformFile(filename string) {
 		newBlock := newBody.AppendNewBlock(block.Type, block.Labels)
 		blockContent, _ := block.Body.Content(&hcl.BodySchema{})
 		for name, bAttr := range blockContent.Attributes {
-			tokens := bAttr.Expr.BuildTokens(nil)
+			tokens := hclwrite.TokensForExpr(bAttr.Expr)
 			newBlock.Body().SetAttributeRaw(name, tokens)
 		}
 	}
