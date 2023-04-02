@@ -20,9 +20,6 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
 
-      - name: Initialize Go module
-        run: go mod init formatter
-
       - name: Tidy Go module
         run: go mod tidy
 
