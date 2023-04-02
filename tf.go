@@ -43,24 +43,22 @@ func processTerraformFile(filename string) {
 	file := hclwrite.NewEmptyFile()
 	newBody := file.Body()
 
-	schema := &hcl.BodySchema{
+	content, _, diags := f.Body.PartialContent(&hcl.BodySchema{
 		Any: true,
-	}
-
-	content, diags := f.Body.Content(schema)
+	})
 	if diags.HasErrors() {
 		fmt.Println("Error decoding body:", filename, diags.Error())
 		return
 	}
 
 	for name, attr := range content.Attributes {
-		newBody.SetAttributeRaw(name, attr.Expr.BuildTokens(nil))
+		newBody.SetAttributeRaw(name, attr.Expr.Range().SliceBytes(data))
 	}
 
 	for _, block := range content.Blocks {
 		newBlock := newBody.AppendNewBlock(block.Type, block.Labels)
 		for _, bAttr := range block.Body.Attributes() {
-			newBlock.Body().SetAttributeRaw(bAttr.Name, bAttr.Expr.BuildTokens(nil))
+			newBlock.Body().SetAttributeRaw(bAttr.Name, bAttr.Expr.Range().SliceBytes(data))
 		}
 	}
 
@@ -85,6 +83,7 @@ func processTerraformFile(filename string) {
 		fmt.Printf("No changes needed for %s\n", filename)
 	}
 }
+
 
 
 
