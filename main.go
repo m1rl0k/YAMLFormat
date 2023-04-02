@@ -362,14 +362,7 @@ func countChanges(diff string) int {
 	}
 	return count
 }
-func indentYAML(data []byte) ([]byte, error) {
-    var buf bytes.Buffer
-    err := yaml.Indent(&buf, data, "  ", "  ")
-    if err != nil {
-        return nil, err
-    }
-    return buf.Bytes(), nil
-}
+
 func getTypeName(v interface{}) string {
 	switch v.(type) {
 	case map[interface{}]interface{}, []interface{}:
