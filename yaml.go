@@ -92,45 +92,45 @@ func findErrorLineAndSuggestFix(data string, err error) (int, string, string) {
 }
 
 func showDiff(path, original, formatted string) {
-	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(original, formatted, false)
+    dmp := diffmatchpatch.New()
+    diffs := dmp.DiffMain(original, formatted, false)
 
-	if len(diffs) > 1 {
-		fmt.Printf("Differences in file %s:\n", path)
+    if len(diffs) > 1 {
+        fmt.Printf("Differences in file %s:\n", path)
 
-		deltas := dmp.DiffToDelta(diffs)
-		originalLines := strings.Split(original, "\n")
-		formattedLines := strings.Split(formatted, "\n")
+        // convert diffs to deltas
+        deltas := dmp.DiffToDelta(diffs)
+        
+        // loop through deltas
+        pos := 0
+        for _, delta := range deltas {
+            if delta.DeltaType == diffmatchpatch.DiffEqual {
+                pos += delta.Length1
+                continue
+            }
 
-		pos := 0
-		for _, delta := range deltas {
-			if delta.Type == diffmatchpatch.DiffEqual {
-				pos += delta.Length1
-				continue
-			}
+            start := pos - 12
+            if start < 0 {
+                start = 0
+            }
+            end := pos + 12
+            if end >= len(original) {
+                end = len(original) - 1
+            }
 
-			start := pos - 12
-			if start < 0 {
-				start = 0
-			}
-			end := pos + 12
-			if end >= len(originalLines) {
-				end = len(originalLines) - 1
-			}
+            fmt.Println("Original:")
+            for i := start; i <= end; i++ {
+                fmt.Printf("%4d: %s\n", i+1, original[i])
+            }
 
-			fmt.Println("Original:")
-			for i := start; i <= end; i++ {
-				fmt.Printf("%4d: %s\n", i+1, originalLines[i])
-			}
+            fmt.Println("Formatted:")
+            for i := start; i <= end; i++ {
+                fmt.Printf("%4d: %s\n", i+1, formatted[i])
+            }
 
-			fmt.Println("Formatted:")
-			for i := start; i <= end; i++ {
-				fmt.Printf("%4d: %s\n", i+1, formattedLines[i])
-			}
-
-			pos += delta.Length1
-		}
-	}
+            pos += delta.Length1
+        }
+    }
 }
 
 func suggestFixForLine(line string) string {
