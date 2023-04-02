@@ -98,8 +98,8 @@ func formatYAMLFile(path string) (int, []byte, []byte, error) {
         }
 
         // Return the corrected data and the number of changes made
-        if changes > 0 {
-            return changes, nil, correctedData, nil
+        if changes {
+            return 1, nil, correctedData, nil
         }
 
         // Return the original data if no corrections were made
@@ -120,9 +120,7 @@ func formatYAMLFile(path string) (int, []byte, []byte, error) {
         diff := difflib.UnifiedDiff{
             A:        difflib.SplitLines(string(data)),
             B:        difflib.SplitLines(string(formattedData)),
-            FromFile: "Original",
-            ToFile:   "Formatted",
-            Context:  3,
+            FilePath: path,
         }
         text, err := difflib.GetUnifiedDiffString(diff)
         if err != nil {
@@ -134,8 +132,9 @@ func formatYAMLFile(path string) (int, []byte, []byte, error) {
     }
 
     fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
-    return 0, data, nil, nil
+    return 0, nil, nil, nil
 }
+
 
 
 func fixIndentation(expectedData, actualData []byte) ([]byte, error) {
