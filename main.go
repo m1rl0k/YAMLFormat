@@ -110,6 +110,7 @@ func formatTerraformFile(path string) error {
 	}
 
 	jsonBytes, err := json.Marshal(file.Body())
+
 	if err != nil {
 		return err
 	}
