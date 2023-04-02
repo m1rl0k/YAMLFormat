@@ -25,8 +25,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	totalChanges := 0
 	var changedFiles []string
+	var changes [][]byte
 
 	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -37,19 +37,15 @@ func main() {
 		}
 		ext := filepath.Ext(path)
 		if ext == ".yaml" || ext == ".yml" {
-			changes, formattedData, err := formatYAMLFile(path)
+			before, after, err := formatYAMLFile(path)
 			if err != nil {
 				fmt.Println("Error formatting file", path, ":", err)
 				return nil
 			}
-			if changes > 0 {
+			if after != nil {
 				changedFiles = append(changedFiles, path)
-				if err := ioutil.WriteFile(path, formattedData, info.Mode()); err != nil {
-					fmt.Println("Error writing formatted file", path, ":", err)
-					return nil
-				}
+				changes = append(changes, after)
 			}
-			totalChanges += changes
 		}
 		return nil
 	})
@@ -59,11 +55,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	if totalChanges > 0 {
-		fmt.Printf("\n\033[1mTotal changes: %d\033[0m\n", totalChanges)
-		fmt.Println("The following files have changes:")
-		for _, file := range changedFiles {
-			fmt.Printf("- %s\n", file)
+	if len(changes) > 0 {
+		fmt.Printf("\n\033[1mChanges suggested:\033[0m\n")
+		for i, file := range changedFiles {
+			fmt.Printf("\033[1m%s:\033[0m\n%s\n", file, changes[i])
 		}
 	} else {
 		fmt.Println("\n\033[32mNo changes needed\033[0m")
@@ -71,7 +66,8 @@ func main() {
 }
 
 
-func formatYAMLFile(path string) ([]byte, []byte, error) {
+func formatYAMLFile(path string) (int, []byte, []byte, error) {
+
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		fmt.Println("Error reading file:", path, err)
