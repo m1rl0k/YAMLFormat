@@ -75,7 +75,7 @@ func formatYAMLFile(path string) (int, []byte, error) {
 		fmt.Println("Error reading file:", path, err)
 		return 0, nil, err
 	}
-	
+
 	// Attempt to parse the YAML data
 	var yamlData interface{}
 	if err := yaml.Unmarshal(data, &yamlData); err != nil {
@@ -85,7 +85,7 @@ func formatYAMLFile(path string) (int, []byte, error) {
 			fmt.Println("Error correcting YAML data:", err)
 			return 0, nil, err
 		}
-		
+
 		// Return the corrected data and the number of changes made
 		if corrected {
 			if err := ioutil.WriteFile(path, correctedData, 0644); err != nil {
@@ -94,13 +94,13 @@ func formatYAMLFile(path string) (int, []byte, error) {
 			}
 			return 1, correctedData, nil
 		}
-		
+
 		// Return the original data if no corrections were made
 		return 0, data, nil
 	}
-	
+
 	// If the data was successfully parsed, reformat it and compare to the original
-	formattedData, err := yaml.Marshal(yamlData)
+	formattedData, err := yaml.Marshal(removeEmptyNodes(yamlData))
 	if err != nil {
 		fmt.Println("Error formatting YAML data:", err)
 		return 0, nil, err
@@ -127,7 +127,73 @@ func formatYAMLFile(path string) (int, []byte, error) {
 	return 0, nil, nil
 }
 
-// Attempt to correct YAML data errors
+func traverseYAMLTree(node interface{}) bool {
+    changed := false
+    switch node := node.(type) {
+    case map[string]interface{}:
+        for key, value := range node {
+            if mapValue, ok := value.(map[string]interface{}); ok {
+                // recursively traverse nested map
+                if traverseYAMLTree(mapValue) {
+                    node[key] = mapValue
+                    changed = true
+                }
+            } else if listValue, ok := value.([]interface{}); ok {
+                // recursively traverse nested list
+                if traverseYAMLList(listValue) {
+                    node[key] = listValue
+                    changed = true
+                }
+            } else {
+                // handle case where value is not a map or list
+                switch value.(type) {
+                case map[interface{}]interface{}:
+                    // convert map[interface{}]interface{} to map[string]interface{}
+                    mapValue := make(map[string]interface{})
+                    for k, v := range value.(map[interface{}]interface{}) {
+                        mapValue[fmt.Sprintf("%v", k)] = v
+                    }
+                    node[key] = mapValue
+                    changed = true
+                }
+            }
+        }
+    }
+    return changed
+}
+
+func traverseYAMLList(list []interface{}) bool {
+    changed := false
+    for i, item := range list {
+        if mapValue, ok := item.(map[string]interface{}); ok {
+            // recursively traverse nested map
+            if traverseYAMLTree(mapValue) {
+                list[i] = mapValue
+                changed = true
+            }
+        } else if nestedList, ok := item.([]interface{}); ok {
+            // recursively traverse nested list
+            if traverseYAMLList(nestedList) {
+                list[i] = nestedList
+                changed = true
+            }
+        } else {
+            // handle case where value is not a map or list
+            switch item.(type) {
+            case map[interface{}]interface{}:
+                // convert map[interface{}]interface{} to map[string]interface{}
+                mapValue := make(map[string]interface{})
+                for k, v := range item.(map[interface{}]interface{}) {
+                    mapValue[fmt.Sprintf("%v", k)] = v
+                }
+                list[i] = mapValue
+                changed = true
+            }
+        }
+    }
+    return changed
+}
+
 func correctYAMLData(data []byte) ([]byte, bool, error) {
 	var yamlData interface{}
 	if err := yaml.Unmarshal(data, &yamlData); err != nil {
@@ -187,28 +253,7 @@ func formatYAML(data []byte) ([]byte, error) {
 
 
 
-func traverseYAMLList(list []interface{}) {
-    for i, item := range list {
-        if mapValue, ok := item.(map[string]interface{}); ok {
-            // recursively traverse nested map
-            traverseYAMLTree(mapValue)
-        } else if nestedList, ok := item.([]interface{}); ok {
-            // recursively traverse nested list
-            traverseYAMLList(nestedList)
-        } else {
-            // handle case where value is not a map or list
-            switch item.(type) {
-            case map[interface{}]interface{}:
-                // convert map[interface{}]interface{} to map[string]interface{}
-                mapValue := make(map[string]interface{})
-                for k, v := range item.(map[interface{}]interface{}) {
-                    mapValue[fmt.Sprintf("%v", k)] = v
-                }
-                list[i] = mapValue
-            }
-        }
-    }
-}
+
 
 func removeEmptyNodes(node interface{}) interface{} {
     switch node := node.(type) {
@@ -268,37 +313,6 @@ func countChanges(diff string) int {
 	return count
 }
 
-func traverseYAMLTree(node interface{}) bool {
-    switch node := node.(type) {
-    case map[string]interface{}:
-        for key, value := range node {
-            if mapValue, ok := value.(map[string]interface{}); ok {
-                // recursively traverse nested map
-                if traverseYAMLTree(mapValue) {
-                    node[key] = mapValue
-                }
-            } else if listValue, ok := value.([]interface{}); ok {
-                // recursively traverse nested list
-                if traverseYAMLList(listValue) {
-                    node[key] = listValue
-                }
-            } else {
-                // handle case where value is not a map or list
-                switch value.(type) {
-                case map[interface{}]interface{}:
-                    // convert map[interface{}]interface{} to map[string]interface{}
-                    mapValue := make(map[string]interface{})
-                    for k, v := range value.(map[interface{}]interface{}) {
-                        mapValue[fmt.Sprintf("%v", k)] = v
-                    }
-                    node[key] = mapValue
-                    return true
-                }
-            }
-        }
-    }
-    return false
-}
 
 
 
