@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
-        "regexp"
-        "strconv"
-        
-        "github.com/ghodss/yaml"
+
+	"github.com/fatih/color"
+	"github.com/ghodss/yaml"
 	"github.com/pmezard/go-difflib/difflib"
 	"gopkg.in/yaml.v3"
-
 )
 
 func main() {
@@ -70,6 +70,45 @@ func provideSuggestions(data string, yamlErr error) {
 		fmt.Println("\033[33mGeneral suggestions:\033[0m")
 		fmt.Println("1. Check the entire YAML file for correct syntax and structure.")
 		fmt.Println("2. Use a YAML linter or validator to identify and fix specific issues.")
+	}
+
+	fixedData := fixCommonIssues(data)
+	if fixedData != data {
+		diff := difflib.UnifiedDiff{
+			A:        difflib.SplitLines(data),
+			B:        difflib.SplitLines(fixedData),
+			FromFile: "Original",
+			ToFile:   "Fixed",
+			Context:  3,
+		}
+		diffStr, _ := difflib.GetUnifiedDiffString(diff)
+
+		fmt.Println("\n\033[33mProposed changes:\033[0m")
+		colorDiff(diffStr)
+	}
+}
+
+func fixCommonIssues(data string) string {
+	// Fix common issues like removing extra spaces and replacing tabs with spaces
+	fixedLines := []string{}
+	for _, line := range strings.Split(data, "\n") {
+		fixedLine := strings.ReplaceAll(line, "\t", "  ") // Replace tabs with two spaces
+		fixedLine = strings.TrimSpace(fixedLine)         // Remove extra spaces at the beginning and end of the line
+		fixedLines = append(fixedLines, fixedLine)
+	}
+	return strings.Join(fixedLines, "\n")
+}
+
+func colorDiff(diffStr string) {
+	for _, line := range strings.Split(diffStr, "\n") {
+		switch {
+		case strings.HasPrefix(line, "+"):
+			color.Green(line)
+		case strings.HasPrefix(line, "-"):
+			color.Red(line)
+		default:
+			fmt.Println(line)
+		}
 	}
 }
 
