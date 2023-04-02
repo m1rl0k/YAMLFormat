@@ -72,64 +72,60 @@
  }
 
 func formatHCLFile(path string) error {
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
-	}
+    data, err := ioutil.ReadFile(path)
+    if err != nil {
+        return fmt.Errorf("failed to read file: %w", err)
+    }
 
-	file, diags := hclsyntax.ParseConfig(data, path, hcl.Pos{Line: 1, Column: 1})
-	if diags.HasErrors() {
-		return fmt.Errorf("failed to parse HCL file '%s': %w", path, diags)
-	}
+    file, diags := hclsyntax.ParseConfig(data, path, hcl.Pos{Line: 1, Column: 1})
+    if diags.HasErrors() {
+        return fmt.Errorf("failed to parse HCL file '%s': %w", path, diags)
+    }
 
-	hclwriteFile := hclwrite.NewEmptyFile()
-	if err := file.Build(hclwriteFile); err != nil {
-		return fmt.Errorf("failed to build HCL file: %w", err)
-	}
+    formattedData, err := hclwrite.Format(file.Node().(*hcl.Block).Src.(*hcl.BodyContent).Bytes())
+    if err != nil {
+        return fmt.Errorf("failed to format HCL file: %w", err)
+    }
 
-	formattedData := hclwriteFile.Bytes()
+    if !bytes.Equal(data, formattedData) {
+        if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
+            return fmt.Errorf("failed to write formatted HCL file: %w", err)
+        }
+        fmt.Printf("Formatted HCL file: %s\n", path)
+    }
 
-	if !bytes.Equal(data, formattedData) {
-		if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
-			return fmt.Errorf("failed to write formatted HCL file: %w", err)
-		}
-		fmt.Printf("Formatted HCL file: %s\n", path)
-	}
-
-	return nil
+    return nil
 }
 
 func formatTerraformFile(path string) error {
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
-	}
+    data, err := ioutil.ReadFile(path)
+    if err != nil {
+        return fmt.Errorf("failed to read file: %w", err)
+    }
 
-	file, diags := hclsyntax.ParseConfig(data, path, hcl.Pos{Line: 1, Column: 1})
-	if diags.HasErrors() {
-		return fmt.Errorf("failed to parse Terraform file '%s': %w", path, diags)
-	}
+    file, diags := hclsyntax.ParseConfig(data, path, hcl.Pos{Line: 1, Column: 1})
+    if diags.HasErrors() {
+        return fmt.Errorf("failed to parse Terraform file '%s': %w", path, diags)
+    }
 
-	jsonBytes, err := json.Marshal(file.Body())
-	if err != nil {
-		return fmt.Errorf("failed to convert HCL to JSON: %w", err)
-	}
+    jsonBytes, err := hcljson.Marshal(file.Node().(*hcl.ObjectList))
+    if err != nil {
+        return fmt.Errorf("failed to convert HCL to JSON: %w", err)
+    }
 
-	hclwriteFile, err := hclwrite.ParseJSON(jsonBytes, path)
-	if err != nil {
-		return fmt.Errorf("failed to parse JSON: %w", err)
-	}
+    hclwriteFile, err := hclwrite.Parse(jsonBytes)
+    if err != nil {
+        return fmt.Errorf("failed to parse JSON: %w", err)
+    }
 
-	formattedData := hclwrite.Format(hclwriteFile.Bytes())
+    formattedData := hclwriteFile.Bytes()
 
-	if !bytes.Equal(data, formattedData) {
-		if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
-			return fmt.Errorf("failed to write formatted Terraform file: %w", err)
-		}
-		fmt.Printf("Formatted Terraform file: %s\n", path)
-	}
+    if !bytes.Equal(data, formattedData) {
+        if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
+            return fmt.Errorf("failed to write formatted Terraform file: %w", err)
+        }
+        fmt.Printf("Formatted Terraform file: %s\n", path)
+    }
 
-	return nil
+    return nil
 }
-
-
