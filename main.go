@@ -30,7 +30,11 @@ func main() {
 		}
 		ext := filepath.Ext(path)
 		if ext == ".yaml" || ext == ".yml" {
-			changes := formatYAMLFile(path)
+			changes, err := formatYAMLFile(path)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error formatting file %s: %v\n", path, err)
+				return nil
+			}
 			if changes > 0 {
 				changedFiles = append(changedFiles, path)
 			}
@@ -55,16 +59,14 @@ func main() {
 	}
 }
 
-func formatYAMLFile(path string) int {
+func formatYAMLFile(path string) (int, error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		fmt.Println("Error reading file:", path, err)
-		return 0
+		return 0, fmt.Errorf("error reading file: %v", err)
 	}
 	formattedData, err := formatYAML(data)
 	if err != nil {
-		fmt.Println("Error formatting YAML data:", err)
-		return 0
+		return 0, fmt.Errorf("error formatting YAML data: %v", err)
 	}
 	if !strings.EqualFold(string(data), string(formattedData)) {
 		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
@@ -80,11 +82,11 @@ func formatYAMLFile(path string) int {
 		fmt.Println(formatDiff(diff))
 		fmt.Println(strings.Repeat("=", 50))
 
-		return countChanges(diff)
+		return countChanges(diff), nil
 	}
 
 	fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
-	return 0
+	return 0, nil
 }
 
 func formatDiff(diff string) string {
@@ -106,7 +108,6 @@ func formatDiff(diff string) string {
 	return formattedDiff.String()
 }
 
-
 func formatYAML(data []byte) ([]byte, error) {
 	var yamlData interface{}
 	if err := yaml.Unmarshal(data, &yamlData); err != nil {
@@ -117,6 +118,12 @@ func formatYAML(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Replace tabs with 2 spaces to correct indentation
+	formattedData = bytes.Replace(formattedData, []byte("\t"), []byte("  "), -1)
+
+	// Remove leading and trailing whitespaces
+	formattedData = bytes.TrimSpace(formattedData)
 
 	return formattedData, nil
 }
