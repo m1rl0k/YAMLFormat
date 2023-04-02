@@ -19,13 +19,6 @@ jobs:
         
       - name: Check out code
         uses: actions/checkout@v2
-
-      - name: Tidy Go module
-        run: |
-         
-         go mod tidy -compat=1.17
-
-
       - name: YAMLFormat
         run: |
       
