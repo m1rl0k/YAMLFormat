@@ -299,5 +299,4 @@ func traverseYAMLTree(node interface{}) {
                     node[key] = mapValue
                 }
             }
-        }
-}
+        
