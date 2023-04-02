@@ -63,16 +63,15 @@ func formatDiff(diff string) string {
 	var formattedDiff strings.Builder
 
 	for _, line := range strings.Split(diff, "\n") {
-		switch {
-		case strings.HasPrefix(line, "+"):
-			formattedDiff.WriteString("\033[32m" + line + "\033[0m")
-		case strings.HasPrefix(line, "-"):
-			formattedDiff.WriteString("\033[31m" + line + "\033[0m")
-		default:
-			formattedDiff.WriteString(line)
+		if strings.HasPrefix(line, "+") || strings.HasPrefix(line, "-") {
+			switch {
+			case strings.HasPrefix(line, "+"):
+				formattedDiff.WriteString("\033[32m" + line + "\033[0m")
+			case strings.HasPrefix(line, "-"):
+				formattedDiff.WriteString("\033[31m" + line + "\033[0m")
+			}
+			formattedDiff.WriteString("\n")
 		}
-
-		formattedDiff.WriteString("\n")
 	}
 
 	return formattedDiff.String()
@@ -93,6 +92,7 @@ func printSummary(diff string) {
 	fmt.Printf("\033[32mAdded lines: %d\033[0m\n", added)
 	fmt.Printf("\033[31mRemoved lines: %d\033[0m\n\n", removed)
 }
+
 
 func formatYAML(data []byte) ([]byte, error) {
 	var yamlData interface{}
