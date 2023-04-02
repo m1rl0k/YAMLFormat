@@ -41,7 +41,19 @@ func processTerraformFile(filename string) {
 	}
 
 	file := hclwrite.NewEmptyFile()
-	file.Body().SetNode(f.Body)
+	newBody := file.Body()
+
+	for _, attr := range f.Body.Attributes {
+		newBody.SetAttributeRaw(attr.Name, attr.Expr.BuildTokens(nil))
+	}
+
+	for _, block := range f.Body.Blocks {
+		newBlock := newBody.AppendNewBlock(block.Type, block.Labels)
+		for _, bAttr := range block.Body.Attributes {
+			newBlock.Body().SetAttributeRaw(bAttr.Name, bAttr.Expr.BuildTokens(nil))
+		}
+	}
+
 	formattedData := file.Bytes()
 
 	if string(data) != string(formattedData) {
@@ -63,3 +75,4 @@ func processTerraformFile(filename string) {
 		fmt.Printf("No changes needed for %s\n", filename)
 	}
 }
+
