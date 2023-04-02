@@ -75,7 +75,7 @@ func formatYAMLFile(path string) error {
 	return nil
 }
 
-func formatTerraformFile(path string) error {
+func func formatTerraformFile(path string) error {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
@@ -87,7 +87,13 @@ func formatTerraformFile(path string) error {
 	}
 
 	hclwriteFile := hclwrite.NewEmptyFile()
-	hclwrite.Copy(hclwriteFile.Body(), file.Body())
+	body := hclwriteFile.Body()
+	file.Body().Content(&hcl.BodySchema{
+		Any: true,
+	}, func(bk hcl.Block) hcl.Diagnostics {
+		body.AppendBlock(bk)
+		return nil
+	})
 
 	formattedData := hclwrite.Format(hclwriteFile.Bytes())
 
@@ -109,3 +115,4 @@ func formatTerraformFile(path string) error {
 
 	return nil
 }
+
