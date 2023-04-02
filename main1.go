@@ -1,83 +1,96 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
+    "fmt"
+    "io/ioutil"
+    "os"
+    "path/filepath"
+    "strings"
 
-	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclwrite"
+    "github.com/pmezard/go-difflib/difflib"
+    "github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
 func main() {
-	if err := filepath.Walk(".", processFile); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+    dir, err := os.Getwd()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+        os.Exit(1)
+    }
+
+    if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+        if err != nil {
+            return err
+        }
+
+        if info.IsDir() {
+            return nil
+        }
+
+        ext := filepath.Ext(path)
+        if ext == ".tf" || ext == ".tfvars" {
+            return formatTerraformFile(path)
+        }
+
+        return nil
+    }); err != nil {
+        fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+        os.Exit(1)
+    }
 }
 
-func processFile(path string, info os.FileInfo, err error) error {
-	if err != nil {
-		return err
-	}
+func formatTerraformFile(path string) error {
+    data, err := ioutil.ReadFile(path)
+    if err != nil {
+        return err
+    }
 
-	if info.IsDir() {
-		return nil
-	}
+    formattedData, err := formatTerraform(data)
+    if err != nil {
+        return err
+    }
 
-	ext := filepath.Ext(path)
-	if ext != ".tf" {
-		return nil
-	}
+    if !strings.EqualFold(string(data), string(formattedData)) {
+        diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+            A:        difflib.SplitLines(string(data)),
+            B:        difflib.SplitLines(string(formattedData)),
+            FromFile: "Original",
+            ToFile:   "Formatted",
+            Context:  3,
+        })
+        fmt.Printf("Differences in Terraform file: %s\n", path)
+        fmt.Println(formatDiff(diff))
+    }
 
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		return err
-	}
-
-	file, diags := hcl.ParseConfig(data, path, hcl.Pos{Line: 1, Column: 1})
-	if diags.HasErrors() {
-		return fmt.Errorf("Error parsing Terraform file '%s': %s", path, diags.Error())
-	}
-
-	hclwriteFile := hclwrite.NewEmptyFile()
-
-	for _, block := range file.Body().Blocks {
-		dst := hclwriteFile.Body().AppendNewBlock(block.Type, block.Labels)
-		copyAttributes(block, dst)
-		copyBlocks(block, dst)
-	}
-
-	formattedData := hclwriteFile.Bytes()
-
-	if !hclwrite.Valid(formattedData) {
-		return fmt.Errorf("Error formatting Terraform file '%s'", path)
-	}
-
-	if !hclwrite.Equal(data, formattedData) {
-		fmt.Printf("Differences in Terraform file: %s\n", path)
-		diff, _ := hclwrite.HighlightUnifiedDiff(string(data), string(formattedData), path, path, 3)
-		fmt.Println(diff)
-
-		if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
-			return err
-		}
-	}
-
-	return nil
+    return nil
 }
 
-func copyAttributes(src *hcl.Block, dst *hclwrite.Block) {
-	for _, attr := range src.Body.Attributes {
-		dst.SetAttributeValue(attr.Name, attr.Expr)
-	}
+func formatTerraform(data []byte) ([]byte, error) {
+    parser := hclsyntax.NewParser()
+    file, diags := parser.ParseHCL(data, "input.tf")
+    if diags.HasErrors() {
+        return nil, fmt.Errorf("failed to parse HCL: %v", diags)
+    }
+
+    config := hclsyntax.EncodeConfig(file.Body, &hclwrite.TabIndent{})
+    return config.Bytes(), nil
 }
 
-func copyBlocks(src *hcl.Block, dst *hclwrite.Block) {
-	for _, block := range src.Body.Blocks {
-		dstBlock := dst.Body().AppendNewBlock(block.Type, block.Labels)
-		copyAttributes(block, dstBlock)
-		copyBlocks(block, dstBlock)
-	}
+func formatDiff(diff string) string {
+    var formattedDiff strings.Builder
+
+    for _, line := range strings.Split(diff, "\n") {
+        switch {
+        case strings.HasPrefix(line, "+"):
+            formattedDiff.WriteString("\033[32m" + line + "\033[0m")
+        case strings.HasPrefix(line, "-"):
+            formattedDiff.WriteString("\033[31m" + line + "\033[0m")
+        default:
+            formattedDiff.WriteString(line)
+        }
+
+        formattedDiff.WriteString("\n")
+    }
+
+    return formattedDiff.String()
 }
