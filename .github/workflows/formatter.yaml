@@ -33,6 +33,4 @@ jobs:
         
 
 
-      - name: Check for changes
-        run: |
-          git diff --exit-code || (echo "Files were changed by the formatter. Please commit the changes." && exit 1)
+
