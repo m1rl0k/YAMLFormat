@@ -70,61 +70,97 @@ func main() {
 
 
 func formatYAMLFile(path string) (int, []byte, error) {
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		fmt.Println("Error reading file:", path, err)
-		return 0, nil, err
-	}
+    data, err := ioutil.ReadFile(path)
+    if err != nil {
+        fmt.Println("Error reading file:", path, err)
+        return 0, nil, err
+    }
 
-	// Attempt to parse the YAML data
-	var yamlData interface{}
-	if err := yaml.Unmarshal(data, &yamlData); err != nil {
-		// Handle the error by applying corrections to the data
-		correctedData, corrected, err := correctYAMLData(data)
-		if err != nil {
-			fmt.Println("Error correcting YAML data:", err)
-			return 0, nil, err
-		}
+    // Attempt to parse the YAML data
+    var yamlData interface{}
+    if err := yaml.Unmarshal(data, &yamlData); err != nil {
+        // Handle the error by applying corrections to the data
+        correctedData, corrected, err := correctYAMLData(data)
+        if err != nil {
+            fmt.Println("Error correcting YAML data:", err)
+            return 0, nil, err
+        }
 
-		// Return the corrected data and the number of changes made
-		if corrected {
-			if err := ioutil.WriteFile(path, correctedData, 0644); err != nil {
-				fmt.Println("Error writing corrected file", path, ":", err)
-				return 0, nil, err
-			}
-			return 1, correctedData, nil
-		}
+        // Return the corrected data and the number of changes made
+        if corrected {
+            if err := ioutil.WriteFile(path, correctedData, 0644); err != nil {
+                fmt.Println("Error writing corrected file", path, ":", err)
+                return 0, nil, err
+            }
+            return 1, correctedData, nil
+        }
 
-		// Return the original data if no corrections were made
-		return 0, data, nil
-	}
+        // Return the original data if no corrections were made
+        return 0, data, nil
+    }
 
-	// If the data was successfully parsed, reformat it and compare to the original
-	formattedData, err := yaml.Marshal(removeEmptyNodes(yamlData))
-	if err != nil {
-		fmt.Println("Error formatting YAML data:", err)
-		return 0, nil, err
-	}
-	if !bytes.Equal(data, formattedData) {
-		// Generate a unified diff of the changes
-		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
-			A:        difflib.SplitLines(string(data)),
-			B:        difflib.SplitLines(string(formattedData)),
-			FromFile: "Original",
-			ToFile:   "Formatted",
-			Context:  3,
-		})
+    // If the data was successfully parsed, reformat it and compare to the original
+    formattedData, err := yaml.Marshal(removeEmptyNodes(yamlData))
+    if err != nil {
+        fmt.Println("Error formatting YAML data:", err)
+        return 0, nil, err
+    }
+    
+    // Check if the indentation is correct
+    expectedData := []byte(strings.TrimSpace(string(formattedData)))
+    actualData := []byte(strings.TrimSpace(string(data)))
+    if !bytes.Equal(expectedData, actualData) {
+        // Fix the indentation
+        correctedData, err := fixIndentation(formattedData, actualData)
+        if err != nil {
+            fmt.Println("Error fixing indentation:", err)
+            return 0, nil, err
+        }
+        if err := ioutil.WriteFile(path, correctedData, 0644); err != nil {
+            fmt.Println("Error writing corrected file", path, ":", err)
+            return 0, nil, err
+        }
+        return 1, correctedData, nil
+    }
 
-		fmt.Printf("\n\033[33mProposed changes for %s:\033[0m\n", path)
-		fmt.Println(strings.Repeat("=", 50))
-		fmt.Println(formatDiff(diff))
-		fmt.Println(strings.Repeat("=", 50))
+    fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
+    return 0, nil, nil
+}
 
-		return countChanges(diff), formattedData, nil
-	}
+func fixIndentation(expectedData, actualData []byte) ([]byte, error) {
+    // Use a YAML library to parse both the expected and actual data
+    var expectedYaml, actualYaml interface{}
+    if err := yaml.Unmarshal(expectedData, &expectedYaml); err != nil {
+        return nil, err
+    }
+    if err := yaml.Unmarshal(actualData, &actualYaml); err != nil {
+        return nil, err
+    }
+    
+    // Generate a map of expected node paths to indentation levels
+    pathIndentMap := make(map[string]int)
+    generatePathIndentMap(expectedYaml, pathIndentMap, 0)
+    
+    // Use the pathIndentMap to generate the corrected data
+    correctedData := generateCorrectedData(actualYaml, pathIndentMap, 0)
+    return correctedData, nil
+}
 
-	fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
-	return 0, nil, nil
+func generatePathIndentMap(node interface{}, pathIndentMap map[string]int, indentLevel int) {
+    switch node := node.(type) {
+    case map[interface{}]interface{}:
+        for k, v := range node {
+            path := fmt.Sprintf("%s.%s", k, getTypeName(v))
+            pathIndentMap[path] = indentLevel
+            generatePathIndentMap(v, pathIndentMap, indentLevel+1)
+        }
+    case []interface{}:
+        for i, v := range node {
+            path := fmt.Sprintf("[%d].%s", i, getTypeName(v))
+            pathIndentMap[path] = indentLevel
+            generatePathIndentMap(v, pathIndentMap, indentLevel+1)
+        }
+    }
 }
 
 func traverseYAMLTree(node interface{}) bool {
