@@ -131,27 +131,6 @@ func formatYAMLFile(path string) ([]byte, []byte, error) {
 }
 
 
-
-
-    if numChanges > 0 {
-        changes = append(changes, fmt.Sprintf("Changes suggested for %s:", path))
-
-        // Generate the diff between the corrected data and original data
-        diffs := difflib.UnifiedDiff{
-            A:        difflib.SplitLines(string(correctedData)),
-            B:        difflib.SplitLines(string(readFile(path))),
-            FilePath: path,
-        }
-
-        // Format the diff and add it to the changes slice
-        diffText, _ := difflib.GetUnifiedDiffString(diffs)
-        changes = append(changes, diffText)
-    }
-
-    return changes
-}
-
-
 func fixIndentation(expectedData, actualData []byte) ([]byte, error) {
     // Use a YAML library to parse both the expected and actual data
     var expectedYaml, actualYaml interface{}
