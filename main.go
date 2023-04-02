@@ -80,13 +80,8 @@ func formatHCLFile(path string) error {
 		return fmt.Errorf("Error parsing HCL file '%s': %s", path, diags.Error())
 	}
 
-	jsonBytes, err := json.Marshal(file.Body)
-	if err != nil {
-		return err
-	}
-
-	hclwriteFile, err := hclwrite.ParseJSON(jsonBytes, path)
-	if err != nil {
+	hclwriteFile := hclwrite.NewEmptyFile()
+	if err := file.Body().Build(hclwriteFile.Body()); err != nil {
 		return err
 	}
 
