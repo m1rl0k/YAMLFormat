@@ -1,0 +1,11 @@
+---
+# This is a sample YAML file with formatting issues
+data:
+ name:John Doe
+ location: New York, USA
+ interests:
+     -Programming
+     -Hiking
+     -Reading
+job: Software Engineer
+---
