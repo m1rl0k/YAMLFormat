@@ -135,17 +135,27 @@ func formatYAML(data []byte) ([]byte, error) {
 
 	return formattedData, nil
 }
-
 func traverseYAMLTree(node interface{}) {
     switch node := node.(type) {
     case map[string]interface{}:
-        for _, value := range node {
+        for key, value := range node {
             if mapValue, ok := value.(map[string]interface{}); ok {
                 // recursively traverse nested map
                 traverseYAMLTree(mapValue)
             } else if listValue, ok := value.([]interface{}); ok {
                 // recursively traverse nested list
                 traverseYAMLList(listValue)
+            } else {
+                // handle case where value is not a map or list
+                switch value.(type) {
+                case map[interface{}]interface{}:
+                    // convert map[interface{}]interface{} to map[string]interface{}
+                    mapValue := make(map[string]interface{})
+                    for k, v := range value.(map[interface{}]interface{}) {
+                        mapValue[fmt.Sprintf("%v", k)] = v
+                    }
+                    node[key] = mapValue
+                }
             }
         }
     case []interface{}:
@@ -153,18 +163,29 @@ func traverseYAMLTree(node interface{}) {
     }
 }
 
-
 func traverseYAMLList(list []interface{}) {
-	for _, value := range list {
-		if mapValue, ok := value.(map[string]interface{}); ok {
-			// recursively traverse nested map
-			traverseYAMLTree(mapValue)
-		} else if listValue, ok := value.([]interface{}); ok {
-			// recursively traverse nested list
-			traverseYAMLList(listValue)
-		}
-	}
+    for i, item := range list {
+        if mapValue, ok := item.(map[string]interface{}); ok {
+            // recursively traverse nested map
+            traverseYAMLTree(mapValue)
+        } else if listValue, ok := item.([]interface{}); ok {
+            // recursively traverse nested list
+            traverseYAMLList(listValue)
+        } else {
+            // handle case where item is not a map or list
+            switch item.(type) {
+            case map[interface{}]interface{}:
+                // convert map[interface{}]interface{} to map[string]interface{}
+                mapValue := make(map[string]interface{})
+                for k, v := range item.(map[interface{}]interface{}) {
+                    mapValue[fmt.Sprintf("%v", k)] = v
+                }
+                list[i] = mapValue
+            }
+        }
+    }
 }
+
 func removeEmptyNodes(node interface{}) interface{} {
     switch node := node.(type) {
     case map[string]interface{}:
