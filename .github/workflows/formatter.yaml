@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  formatting:
+  YAMLFormat:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go
