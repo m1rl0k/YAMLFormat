@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2/hclwrite"
-	"github.com/zclconf/go-cty/cty/gocty"
+	
 )
 
 func main() {
@@ -31,7 +31,7 @@ func processTerraformFile(filename string) {
 		return
 	}
 
-	file, diags := hclwrite.ParseConfig(data, filename, hclwrite.DefaultConfig)
+	file, diags := hclwrite.ParseConfig(data, filename, nil)
 	if diags.HasErrors() {
 		fmt.Println("Error parsing file:", filename, diags.Error())
 		return
