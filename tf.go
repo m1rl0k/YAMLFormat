@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
-	"github.com/hashicorp/hcl/v2"
+	"github.com/fatih/color"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclwrite"
-	
+	"github.com/pmezard/go-difflib/difflib"
 )
 
 func main() {
@@ -40,13 +41,20 @@ func processTerraformFile(filename string) {
 		return
 	}
 
-	file := hclwrite.NewEmptyFile()
-	file.Body().SetNode(f.Body)
-
-	formattedData := file.Bytes()
+	formattedData := hclwrite.Render(f)
 
 	if string(data) != string(formattedData) {
-		fmt.Printf("Proposed changes for %s:\n", filename)
+		diff := difflib.UnifiedDiff{
+			A:        difflib.SplitLines(string(data)),
+			B:        difflib.SplitLines(string(formattedData)),
+			FromFile: "Original",
+			ToFile:   "Formatted",
+			Context:  3,
+		}
+		diffStr, _ := difflib.GetUnifiedDiffString(diff)
+		color.HiYellow(diffStr)
+
+		fmt.Printf("\nProposed changes for %s:\n", filename)
 		fmt.Println("-----------------------------------")
 		fmt.Println(string(formattedData))
 		fmt.Println("-----------------------------------")
@@ -54,5 +62,3 @@ func processTerraformFile(filename string) {
 		fmt.Printf("No changes needed for %s\n", filename)
 	}
 }
-
-
