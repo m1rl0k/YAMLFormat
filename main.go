@@ -452,16 +452,7 @@ func generateCorrectedData(actualData interface{}, pathIndentMap map[string]int,
 	return buf.Bytes()
 }
 
-func getTypeName(value interface{}) string {
-	switch value.(type) {
-	case map[interface{}]interface{}:
-		return "map"
-	case []interface{}:
-		return "list"
-	default:
-		return "string"
-	}
-}
+
 
 func getTypeValue(value interface{}) string {
 	switch value.(type) {
@@ -474,14 +465,6 @@ func getTypeValue(value interface{}) string {
 	default:
 		return fmt.Sprintf("%v", value)
 	}
-}
-func indentYAML(data []byte) ([]byte, error) {
-    var buf bytes.Buffer
-    err := yaml.Indent(&buf, data, "  ", "  ")
-    if err != nil {
-        return nil, err
-    }
-    return buf.Bytes(), nil
 }
 
 
