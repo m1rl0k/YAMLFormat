@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -74,17 +73,20 @@ func formatHCLFile(path string) error {
 		return err
 	}
 
-	file, diag := hclsyntax.ParseConfig(data, path, hcl.Pos{Line: 1, Column: 1})
-	if diag.HasErrors() {
-		return diag
+	file, diags := hclsyntax.ParseConfig(data, path, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return fmt.Errorf("Error parsing HCL file '%s': %s", path, diags.Error())
 	}
 
-	formattedData := hclwrite.NewEmptyFile()
-	_ = hclwrite.MergeFiles([]*hclwrite.File{formattedData, hclwrite.NewFileFromTokens(file)})
-	formattedBytes := formattedData.Bytes()
+	hclwriteFile := hclwrite.NewEmptyFile()
+	if err := file.Body().Build(hclwriteFile.Body()); err != nil {
+		return err
+	}
 
-	if !bytes.Equal(data, formattedBytes) {
-		if err := ioutil.WriteFile(path, formattedBytes, 0644); err != nil {
+	formattedData := hclwrite.Format(hclwriteFile.Bytes())
+
+	if !strings.EqualFold(string(data), string(formattedData)) {
+		if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
 			return err
 		}
 		fmt.Printf("Formatted HCL file: %s\n", path)
@@ -99,17 +101,20 @@ func formatTerraformFile(path string) error {
 		return err
 	}
 
-	file, diag := hclsyntax.ParseConfig(data, path, hcl.Pos{Line: 1, Column: 1})
-	if diag.HasErrors() {
-		return diag
+	file, diags := hclsyntax.ParseConfig(data, path, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return fmt.Errorf("Error parsing Terraform file '%s': %s", path, diags.Error())
 	}
 
-	formattedData := hclwrite.NewEmptyFile()
-	_ = hclwrite.MergeFiles([]*hclwrite.File{formattedData, hclwrite.NewFileFromTokens(file)})
-	formattedBytes := formattedData.Bytes()
+	hclwriteFile := hclwrite.NewEmptyFile()
+	if err := file.Body().Build(hclwriteFile.Body()); err != nil {
+		return err
+	}
 
-	if !bytes.Equal(data, formattedBytes) {
-		if err := ioutil.WriteFile(path, formattedBytes, 0644); err != nil {
+		formattedData := hclwrite.Format(hclwriteFile.Bytes())
+
+	if !strings.EqualFold(string(data), string(formattedData)) {
+		if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
 			return err
 		}
 		fmt.Printf("Formatted Terraform file: %s\n", path)
@@ -117,3 +122,4 @@ func formatTerraformFile(path string) error {
 
 	return nil
 }
+
