@@ -87,7 +87,14 @@ func formatTerraformFile(path string) error {
 	}
 
 	hclwriteFile := hclwrite.NewEmptyFile()
-	file.Body().Build(hclwriteFile.Body())
+	body := file.Body()
+	for _, block := range body.Blocks() {
+		newBlock := hclwriteFile.Body().AppendNewBlock(block.Type(), block.Labels())
+		block.Body().Build(newBlock.Body())
+	}
+	for attrName, attr := range body.Attributes() {
+		hclwriteFile.Body().SetAttributeValue(attrName, attr.Expr())
+	}
 
 	formattedData := hclwriteFile.Bytes()
 
