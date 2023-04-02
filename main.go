@@ -370,7 +370,24 @@ func indentYAML(data []byte) ([]byte, error) {
     }
     return buf.Bytes(), nil
 }
-
+func getTypeName(v interface{}) string {
+	switch v.(type) {
+	case map[interface{}]interface{}, []interface{}:
+		return "map"
+	case string:
+		return "string"
+	case bool:
+		return "bool"
+	case int, int8, int16, int32, int64:
+		return "int"
+	case uint, uint8, uint16, uint32, uint64:
+		return "uint"
+	case float32, float64:
+		return "float"
+	default:
+		return "unknown"
+	}
+}
 
 
 
