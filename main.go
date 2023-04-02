@@ -76,7 +76,10 @@ func formatHCLFile(path string) error {
 		return fmt.Errorf("Error parsing HCL file '%s': %s", path, diags.Error())
 	}
 
-	formattedData := hclwrite.Format(file)
+	hclwriteFile := hclwrite.NewEmptyFile()
+	hclwriteFile.Body().SetFromAbsFile(file)
+
+	formattedData := hclwrite.Format(hclwriteFile.Bytes())
 
 	if !strings.EqualFold(string(data), string(formattedData)) {
 		if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
