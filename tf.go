@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	
 )
@@ -31,11 +33,15 @@ func processTerraformFile(filename string) {
 		return
 	}
 
-	file, diags := hclwrite.Parse(data)
+	parser := hclparse.NewParser()
+	f, diags := parser.ParseHCL(data, filename)
 	if diags.HasErrors() {
 		fmt.Println("Error parsing file:", filename, diags.Error())
 		return
 	}
+
+	file := hclwrite.NewEmptyFile()
+	file.Body().SetNode(f.Body)
 
 	formattedData := file.Bytes()
 
