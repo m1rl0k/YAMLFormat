@@ -25,8 +25,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	totalChanges := 0
 	var changedFiles []string
-	var changes [][]byte
 
 	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -37,14 +37,26 @@ func main() {
 		}
 		ext := filepath.Ext(path)
 		if ext == ".yaml" || ext == ".yml" {
-			before, after, err := formatYAMLFile(path)
+			changes, originalData, formattedData, err := formatYAMLFile(path)
 			if err != nil {
 				fmt.Println("Error formatting file", path, ":", err)
 				return nil
 			}
-			if after != nil {
+			if changes > 0 {
 				changedFiles = append(changedFiles, path)
-				changes = append(changes, after)
+				if err := ioutil.WriteFile(path, formattedData, info.Mode()); err != nil {
+					fmt.Println("Error writing formatted file", path, ":", err)
+					return nil
+				}
+			}
+			totalChanges += changes
+
+			if len(originalData) > 0 && len(formattedData) > 0 {
+				diff := generateDiff(originalData, formattedData)
+				if len(diff) > 0 {
+					fmt.Println("Changes suggested for", path+":")
+					fmt.Println(diff)
+				}
 			}
 		}
 		return nil
@@ -55,10 +67,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	if len(changes) > 0 {
-		fmt.Printf("\n\033[1mChanges suggested:\033[0m\n")
-		for i, file := range changedFiles {
-			fmt.Printf("\033[1m%s:\033[0m\n%s\n", file, changes[i])
+	if totalChanges > 0 {
+		fmt.Printf("\n\033[1mTotal changes: %d\033[0m\n", totalChanges)
+		fmt.Println("The following files have changes:")
+		for _, file := range changedFiles {
+			fmt.Printf("- %s\n", file)
 		}
 	} else {
 		fmt.Println("\n\033[32mNo changes needed\033[0m")
@@ -66,64 +79,62 @@ func main() {
 }
 
 
+
 func formatYAMLFile(path string) (int, []byte, []byte, error) {
+    data, err := ioutil.ReadFile(path)
+    if err != nil {
+        fmt.Println("Error reading file:", path, err)
+        return 0, nil, nil, err
+    }
 
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		fmt.Println("Error reading file:", path, err)
-		return nil, nil, err
-	}
+    // Attempt to parse the YAML data
+    var yamlData interface{}
+    if err := yaml.Unmarshal(data, &yamlData); err != nil {
+        // Handle the error by applying corrections to the data
+        correctedData, changes, err := correctYAMLData(data)
+        if err != nil {
+            fmt.Println("Error correcting YAML data:", err)
+            return 0, nil, nil, err
+        }
 
-	// Attempt to parse the YAML data
-	var yamlData interface{}
-	if err := yaml.Unmarshal(data, &yamlData); err != nil {
-		// Handle the error by applying corrections to the data
-		correctedData, corrected, err := correctYAMLData(data)
-		if err != nil {
-			fmt.Println("Error correcting YAML data:", err)
-			return nil, nil, err
-		}
+        // Return the corrected data and the number of changes made
+        if changes > 0 {
+            return changes, nil, correctedData, nil
+        }
 
-		// Return the corrected data and the number of changes made
-		if corrected {
-			return nil, correctedData, nil
-		}
+        // Return the original data if no corrections were made
+        return 0, data, nil, nil
+    }
 
-		// Return the original data if no corrections were made
-		return data, nil, nil
-	}
+    // If the data was successfully parsed, reformat it and compare to the original
+    formattedData, err := yaml.Marshal(removeEmptyNodes(yamlData))
+    if err != nil {
+        fmt.Println("Error formatting YAML data:", err)
+        return 0, nil, nil, err
+    }
 
-	// If the data was successfully parsed, reformat it and compare to the original
-	formattedData, err := yaml.Marshal(removeEmptyNodes(yamlData))
-	if err != nil {
-		fmt.Println("Error formatting YAML data:", err)
-		return nil, nil, err
-	}
+    // Check if the indentation is correct
+    expectedData := []byte(strings.TrimSpace(string(formattedData)))
+    actualData := []byte(strings.TrimSpace(string(data)))
+    if !bytes.Equal(expectedData, actualData) {
+        diff := difflib.UnifiedDiff{
+            A:        difflib.SplitLines(string(data)),
+            B:        difflib.SplitLines(string(formattedData)),
+            FromFile: "Original",
+            ToFile:   "Formatted",
+            Context:  3,
+        }
+        text, err := difflib.GetUnifiedDiffString(diff)
+        if err != nil {
+            fmt.Println("Error generating diff:", err)
+            return 0, nil, nil, err
+        }
 
-	// Check if the indentation is correct
-	expectedData := []byte(strings.TrimSpace(string(formattedData)))
-	actualData := []byte(strings.TrimSpace(string(data)))
-	if !bytes.Equal(expectedData, actualData) {
-		diff := difflib.UnifiedDiff{
-			A:        difflib.SplitLines(string(data)),
-			B:        difflib.SplitLines(string(formattedData)),
-			FromFile: "Original",
-			ToFile:   "Formatted",
-			Context:  3,
-		}
-		text, err := difflib.GetUnifiedDiffString(diff)
-		if err != nil {
-			fmt.Println("Error generating diff:", err)
-			return nil, nil, err
-		}
-		fmt.Printf("\033[33mChanges suggested for %s:\n\033[0m", path)
-		fmt.Println(text)
+        return 1, actualData, []byte(text), nil
+    }
 
-		return actualData, []byte(text), nil
-	}
-
-	fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
-	return data, nil, nil
+    fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
+    return 0, data, nil, nil
 }
 
 
