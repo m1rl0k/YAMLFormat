@@ -64,34 +64,36 @@ func main() {
 	}
 }
 
-func formatYAMLFile(path string) (int, error) {
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		return 0, fmt.Errorf("error reading file: %v", err)
-	}
-	formattedData, err := formatYAML(data)
-	if err != nil {
-		return 0, fmt.Errorf("error formatting YAML data: %v", err)
-	}
-	if !strings.EqualFold(string(data), string(formattedData)) {
-		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
-			A:        difflib.SplitLines(string(data)),
-			B:        difflib.SplitLines(string(formattedData)),
-			FromFile: "Original",
-			ToFile:   "Formatted",
-			Context:  3,
-		})
+func formatYAMLFile(path string) int {
+    data, err := ioutil.ReadFile(path)
+    if err != nil {
+        fmt.Println("Error reading file:", path, err)
+        return 0
+    }
+    formattedData, err := formatYAML(data)
+    if err != nil {
+        fmt.Println("Error formatting YAML data:", err)
+        return 0
+    }
+    if !strings.EqualFold(string(data), string(formattedData)) {
+        diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+            A:        difflib.SplitLines(string(data)),
+            B:        difflib.SplitLines(string(formattedData)),
+            FromFile: "Original",
+            ToFile:   "Formatted",
+            Context:  3,
+        })
 
-		fmt.Printf("\n\033[33mProposed changes for %s:\033[0m\n", path)
-		fmt.Println(strings.Repeat("=", 50))
-		fmt.Println(formatDiff(diff))
-		fmt.Println(strings.Repeat("=", 50))
+        fmt.Printf("\n\033[33mProposed changes for %s:\033[0m\n", path)
+        fmt.Println(strings.Repeat("=", 50))
+        fmt.Println(formatDiff(diff))
+        fmt.Println(strings.Repeat("=", 50))
 
-		return countChanges(diff), nil
-	}
+        return countChanges(diff)
+    }
 
-	fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
-	return 0, nil
+    fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
+    return 0
 }
 
 func formatDiff(diff string) string {
@@ -114,23 +116,49 @@ func formatDiff(diff string) string {
 }
 
 func formatYAML(data []byte) ([]byte, error) {
-	var yamlData interface{}
-	if err := yaml.Unmarshal(data, &yamlData); err != nil {
-		return nil, err
-	}
+    var yamlData interface{}
+    if err := yaml.Unmarshal(data, &yamlData); err != nil {
+        return nil, err
+    }
 
-	formattedData, err := yaml.Marshal(yamlData)
-	if err != nil {
-		return nil, err
-	}
+    // recursively traverse the YAML tree and correct any formatting errors
+    traverseYAMLTree(yamlData)
 
-	// Replace tabs with 2 spaces to correct indentation
-	formattedData = bytes.Replace(formattedData, []byte("\t"), []byte("  "), -1)
+    formattedData, err := yaml.Marshal(yamlData)
+    if err != nil {
+        return nil, err
+    }
 
-	// Remove leading and trailing whitespaces
-	formattedData = bytes.TrimSpace(formattedData)
+    return formattedData, nil
+}
 
-	return formattedData, nil
+func traverseYAMLTree(node interface{}) {
+    switch node := node.(type) {
+    case map[string]interface{}:
+        for key, value := range node {
+            if mapValue, ok := value.(map[string]interface{}); ok {
+                // recursively traverse nested map
+                traverseYAMLTree(mapValue)
+            } else if listValue, ok := value.([]interface{}); ok {
+                // recursively traverse nested list
+                traverseYAMLList(listValue)
+            }
+        }
+    case []interface{}:
+        traverseYAMLList(node)
+    }
+}
+
+func traverseYAMLList(list []interface{}) {
+    for _, value := range list {
+        if mapValue, ok := value.(map[string]interface{}); ok {
+            // recursively traverse nested map
+            traverseYAMLTree(mapValue)
+        } else if listValue, ok := value.([]interface{}); ok {
+            // recursively traverse nested list
+            traverseYAMLList(listValue)
+        }
+    }
 }
 
 func countChanges(diff string) int {
