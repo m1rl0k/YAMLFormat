@@ -70,3 +70,54 @@
 
  	return nil
  }
+
+func formatHCLFile(path string) error {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	file, diag := hclsyntax.ParseConfig(data, path, hcl.Pos{Line: 1, Column: 1})
+	if diag.HasErrors() {
+		return diag
+	}
+
+	formattedData := hclwrite.NewEmptyFile()
+	_ = hclwrite.MergeFiles([]*hclwrite.File{formattedData, hclwrite.NewFileFromTokens(file)})
+	formattedBytes := formattedData.Bytes()
+
+	if !bytes.Equal(data, formattedBytes) {
+		if err := ioutil.WriteFile(path, formattedBytes, 0644); err != nil {
+			return err
+		}
+		fmt.Printf("Formatted HCL file: %s\n", path)
+	}
+
+	return nil
+}
+
+func formatTerraformFile(path string) error {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	file, diag := hcl.Parse(data)
+	if diag.HasErrors() {
+		return fmt.Errorf("Error parsing Terraform file: %s", diag.Error())
+	}
+
+	formattedData := hclwrite.NewEmptyFile()
+	_ = hclwrite.MergeFiles([]*hclwrite.File{formattedData, hclwrite.NewFileFromAst(file)})
+	formattedBytes := formattedData.Bytes()
+
+	if !bytes.Equal(data, formattedBytes) {
+		if err := ioutil.WriteFile(path, formattedBytes, 0644); err != nil {
+			return err
+		}
+		fmt.Printf("Formatted Terraform file: %s\n", path)
+	}
+
+	return nil
+}
+
