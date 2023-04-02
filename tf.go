@@ -6,93 +6,46 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-        "strconv"
 
 	"github.com/hashicorp/hcl/v2/hclwrite"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pmezard/go-difflib/difflib"
+	"github.com/zclconf/go-cty/cty/gocty"
 )
 
 func main() {
-	dir, err := os.Getwd()
+	files, err := ioutil.ReadDir(".")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Println("Error reading directory:", err)
 		os.Exit(1)
 	}
 
-	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	for _, f := range files {
+		if strings.HasSuffix(f.Name(), ".tf") {
+			processTerraformFile(f.Name())
 		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		ext := filepath.Ext(path)
-		if ext == ".tf" || ext == ".tfvars" {
-			return formatTerraformFile(path)
-		}
-
-		return nil
-	}); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
 	}
 }
 
-func formatTerraformFile(path string) error {
-	data, err := ioutil.ReadFile(path)
+func processTerraformFile(filename string) {
+	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return err
+		fmt.Println("Error reading file:", filename, err)
+		return
 	}
 
-	formattedData, err := formatTerraform(data)
-	if err != nil {
-		return err
-	}
-
-	if !strings.EqualFold(string(data), string(formattedData)) {
-		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
-			A:        difflib.SplitLines(string(data)),
-			B:        difflib.SplitLines(string(formattedData)),
-			FromFile: "Original",
-			ToFile:   "Formatted",
-			Context:  3,
-		})
-		fmt.Printf("Differences in Terraform file: %s\n", path)
-		fmt.Println(formatDiff(diff))
-	}
-
-	return nil
-}
-
-func formatTerraform(data []byte) ([]byte, error) {
-	parser := hclsyntax.NewParser()
-	file, diags := parser.ParseHCL(data, "input.tf")
+	file, diags := hclwrite.ParseConfig(data, filename, gocty.NilPath)
 	if diags.HasErrors() {
-		return nil, fmt.Errorf("failed to parse HCL: %v", diags)
+		fmt.Println("Error parsing file:", filename, diags.Error())
+		return
 	}
 
-	config := hclsyntax.EncodeConfig(file.Body, &hclwrite.Indent{})
-	return config.Bytes(), nil
-}
+	formattedData := file.Bytes()
 
-func formatDiff(diff string) string {
-	var formattedDiff strings.Builder
-
-	for _, line := range strings.Split(diff, "\n") {
-		switch {
-		case strings.HasPrefix(line, "+"):
-			formattedDiff.WriteString("\033[32m" + line + "\033[0m")
-		case strings.HasPrefix(line, "-"):
-			formattedDiff.WriteString("\033[31m" + line + "\033[0m")
-		default:
-			formattedDiff.WriteString(line)
-		}
-
-		formattedDiff.WriteString("\n")
+	if string(data) != string(formattedData) {
+		fmt.Printf("Proposed changes for %s:\n", filename)
+		fmt.Println("-----------------------------------")
+		fmt.Println(string(formattedData))
+		fmt.Println("-----------------------------------")
+	} else {
+		fmt.Printf("No changes needed for %s\n", filename)
 	}
-
-	return formattedDiff.String()
 }
