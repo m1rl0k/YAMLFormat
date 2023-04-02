@@ -96,38 +96,42 @@ func showDiff(path, original, formatted string) {
 
 	if len(diffs) > 1 {
 		fmt.Printf("Differences in file %s:\n", path)
+		coloredOutput := dmp.DiffPrettyText(diffs)
+		fmt.Print(coloredOutput)
+		fmt.Println()
+	}
+}
+func suggestFixForLine(line string) string {
+	fixedLine := line
 
-		deltas := dmp.DiffToDelta(diffs)
-		originalLines := strings.Split(original, "\n")
-		formattedLines := strings.Split(formatted, "\n")
-
-		pos := 0
-		for _, delta := range deltas {
-			if delta.Type == diffmatchpatch.DiffEqual {
-				pos += delta.Length1
-				continue
-			}
-
-			start := pos - 12
-			if start < 0 {
-				start = 0
-			}
-			end := pos + 12
-			if end >= len(originalLines) {
-				end = len(originalLines) - 1
-			}
-
-			fmt.Println("Original:")
-			for i := start; i <= end; i++ {
-				fmt.Printf("%4d: %s\n", i+1, originalLines[i])
-			}
-
-			fmt.Println("Formatted:")
-			for i := start; i <= end; i++ {
-				fmt.Printf("%4d: %s\n", i+1, formattedLines[i])
-			}
-
-			pos += delta.Length1
+	// Check for missing colons
+	if !strings.Contains(line, ":") && !strings.HasPrefix(line, "#") {
+		index := strings.IndexFunc(line, unicode.IsLetter)
+		if index != -1 {
+			fixedLine = line[:index+1] + ": " + line[index+1:]
 		}
 	}
+
+	// Check for missing spaces after colons
+	colonIndex := strings.Index(line, ":")
+	if colonIndex != -1 && len(line) > colonIndex+1 && line[colonIndex+1] != ' ' {
+		fixedLine = line[:colonIndex+1] + " " + line[colonIndex+1:]
+	}
+
+	// Fix incorrect indentation
+	indentation := 0
+	for _, char := range line {
+		if char == ' ' {
+			indentation++
+		} else {
+			break
+		}
+	}
+
+	correctIndentation := (indentation / 2) * 2
+	if correctIndentation != indentation {
+		fixedLine = strings.Repeat(" ", correctIndentation) + strings.TrimSpace(line)
+	}
+
+	return fixedLine
 }
