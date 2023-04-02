@@ -49,7 +49,9 @@ func processYAMLFile(path string) {
 	var parsedContent yaml.Node
 	err = yaml.Unmarshal(data, &parsedContent)
 	if err != nil {
-		log.Printf("Error parsing YAML in file %s: %v\n", path, err)
+		// Find the line number and content of the error
+		line, content := findErrorLine(string(data), err)
+		log.Printf("Error parsing YAML in file %s (line %d: %q): %v\n", path, line, content, err)
 		return
 	}
 
@@ -65,6 +67,21 @@ func processYAMLFile(path string) {
 
 	// Generate and display the diff
 	showDiff(path, string(data), string(formatted))
+}
+
+func findErrorLine(data string, err error) (int, string) {
+	var line, column int
+
+	if syntaxErr, ok := err.(*yaml.SyntaxError); ok {
+		line, column = syntaxErr.Line, syntaxErr.Column
+	}
+
+	lines := strings.Split(data, "\n")
+	if line > 0 && line <= len(lines) {
+		return line, lines[line-1]
+	}
+
+	return -1, ""
 }
 
 func updateYAMLNodeStyle(node *yaml.Node) {
@@ -85,4 +102,41 @@ func showDiff(path, original, formatted string) {
 		fmt.Printf("Differences in file %s:\n", path)
 		fmt.Println(dmp.DiffPrettyText(diffs))
 	}
+}
+
+func suggestFixForLine(line string) string {
+	fixed := strings.TrimSpace(line)
+
+	if strings.Contains(fixed, ":") {
+		parts := strings.SplitN(fixed, ":", 2)
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		// If the value contains a colon, assume it's an error and remove it
+		if strings.Contains(value, ":") {
+			value = strings.Replace(value, ":", "", 1)
+		}
+
+		fixed = fmt.Sprintf("%s: %s", key, value)
+	} else {
+		// If there's no colon, assume it's missing and add one
+		fixed = fmt.Sprintf("%s:", fixed)
+	}
+
+	return fixed
+}
+
+func findErrorLineAndSuggestFix(data string, err error) (int, string, string) {
+	var line, column int
+
+	if syntaxErr, ok := err.(*yaml.SyntaxError); ok {
+		line, column = syntaxErr.Line, syntaxErr.Column
+	}
+
+	lines := strings.Split(data, "\n")
+	if line > 0 && line <= len(lines) {
+		return line, lines[line-1], suggestFixForLine(lines[line-1])
+	}
+
+	return -1, "", ""
 }
