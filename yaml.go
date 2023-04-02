@@ -101,18 +101,6 @@ func showDiff(path, original, formatted string) {
 
 	if len(diffs) > 1 {
 		fmt.Printf("Differences in file %s:\n", path)
-		coloredOutput := dmp.DiffPrettyHtml(diffs)
-		colorable.NewColorableStdout().Write([]byte(coloredOutput))
-		fmt.Println()
-	}
-}
-
-func showDiff(path, original, formatted string) {
-	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(original, formatted, false)
-
-	if len(diffs) > 1 {
-		fmt.Printf("Differences in file %s:\n", path)
 		coloredOutput := diffToColoredYAMLText(diffs)
 		colorable.NewColorableStdout().Write([]byte(coloredOutput))
 		fmt.Println()
