@@ -117,3 +117,17 @@ func showDiff(path, original, formatted string) {
 		fmt.Println(dmp.DiffPrettyText(diffs))
 	}
 }
+func findErrorLineAndSuggestFix(data string, err error) (int, string, string) {
+	var line, column int
+
+	if syntaxErr, ok := err.(*yaml.SyntaxError); ok {
+		line, column = syntaxErr.Line, syntaxErr.Column
+	}
+
+	lines := strings.Split(data, "\n")
+	if line > 0 && line <= len(lines) {
+		return line, lines[line-1], suggestFixForLine(lines[line-1])
+	}
+
+	return -1, "", ""
+}
