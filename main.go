@@ -85,3 +85,4 @@ func formatYAML(data []byte) ([]byte, error) {
 	}
 
 	return formattedData, nil
+}
