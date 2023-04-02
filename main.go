@@ -464,6 +464,77 @@ func getTypeValue(value interface{}) string {
 	}
 }
 
+func getSuggestedChanges(path string) []string {
+    var changes []string
+
+    // Read and parse the YAML data
+    data, err := ioutil.ReadFile(path)
+    if err != nil {
+        fmt.Println("Error reading file:", path, err)
+        return changes
+    }
+
+    var yamlData interface{}
+    if err := yaml.Unmarshal(data, &yamlData); err != nil {
+        // Handle the error by applying corrections to the data
+        correctedData, corrected, err := correctYAMLData(data)
+        if err != nil {
+            fmt.Println("Error correcting YAML data:", err)
+            return changes
+        }
+
+        // Return the corrected data and the number of changes made
+        if corrected {
+            changes = append(changes, fmt.Sprintf("Changes suggested for %s:", path))
+
+            // Generate the diff between the corrected data and original data
+            diffs := difflib.UnifiedDiff{
+                A:        difflib.SplitLines(string(correctedData)),
+                B:        difflib.SplitLines(string(data)),
+                FilePath: path,
+            }
+
+            // Format the diff and add it to the changes slice
+            diffText, _ := difflib.GetUnifiedDiffString(diffs)
+            changes = append(changes, diffText)
+            
+            return changes
+        }
+
+        // Return the original data if no corrections were made
+        return changes
+    }
+
+    // If the data was successfully parsed, reformat it and compare to the original
+    formattedData, err := yaml.Marshal(removeEmptyNodes(yamlData))
+    if err != nil {
+        fmt.Println("Error formatting YAML data:", err)
+        return changes
+    }
+
+    // Check if the indentation is correct
+    expectedData := []byte(strings.TrimSpace(string(formattedData)))
+    actualData := []byte(strings.TrimSpace(string(data)))
+    if !bytes.Equal(expectedData, actualData) {
+        changes = append(changes, fmt.Sprintf("Changes suggested for %s:", path))
+
+        // Generate the diff between the formatted data and original data
+        diffs := difflib.UnifiedDiff{
+            A:        difflib.SplitLines(string(formattedData)),
+            B:        difflib.SplitLines(string(data)),
+            FilePath: path,
+        }
+
+        // Format the diff and add it to the changes slice
+        diffText, _ := difflib.GetUnifiedDiffString(diffs)
+        changes = append(changes, diffText)
+        
+        return changes
+    }
+
+    fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
+    return changes
+}
 
 
 
