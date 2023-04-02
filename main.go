@@ -81,61 +81,61 @@ func main() {
 
 
 func formatYAMLFile(path string) (int, []byte, []byte, error) {
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		fmt.Println("Error reading file:", path, err)
-		return 0, nil, nil, err
-	}
+    data, err := ioutil.ReadFile(path)
+    if err != nil {
+        fmt.Println("Error reading file:", path, err)
+        return 0, nil, nil, err
+    }
 
-	// Attempt to parse the YAML data
-	var yamlData interface{}
-	if err := yaml.Unmarshal(data, &yamlData); err != nil {
-		// Handle the error by applying corrections to the data
-		correctedData, changes, err := correctYAMLData(data)
-		if err != nil {
-			fmt.Println("Error correcting YAML data:", err)
-			return 0, nil, nil, err
-		}
+    // Attempt to parse the YAML data
+    var yamlData interface{}
+    if err := yaml.Unmarshal(data, &yamlData); err != nil {
+        // Handle the error by applying corrections to the data
+        correctedData, changes, err := correctYAMLData(data)
+        if err != nil {
+            fmt.Println("Error correcting YAML data:", err)
+            return 0, nil, nil, err
+        }
 
-		// Return the corrected data and the number of changes made
-		if changes > 0 {
-			return changes, nil, correctedData, nil
-		}
+        // Return the corrected data and the number of changes made
+        if changes {
+            return 1, nil, correctedData, nil
+        }
 
-		// Return the original data if no corrections were made
-		return 0, data, nil, nil
-	}
+        // Return the original data if no corrections were made
+        return 0, data, nil, nil
+    }
 
-	// If the data was successfully parsed, reformat it and compare to the original
-	formattedData, err := yaml.Marshal(removeEmptyNodes(yamlData))
-	if err != nil {
-		fmt.Println("Error formatting YAML data:", err)
-		return 0, nil, nil, err
-	}
+    // If the data was successfully parsed, reformat it and compare to the original
+    formattedData, err := yaml.Marshal(removeEmptyNodes(yamlData))
+    if err != nil {
+        fmt.Println("Error formatting YAML data:", err)
+        return 0, nil, nil, err
+    }
 
-	// Check if the indentation is correct
-	expectedData := []byte(strings.TrimSpace(string(formattedData)))
-	actualData := []byte(strings.TrimSpace(string(data)))
-	if !bytes.Equal(expectedData, actualData) {
-		diff := difflib.UnifiedDiff{
-			A:        difflib.SplitLines(string(data)),
-			B:        difflib.SplitLines(string(formattedData)),
-			ToFile:   path,
-			FromFile: path,
-			Context:  3,
-		}
-		text, err := difflib.GetUnifiedDiffString(diff)
-		if err != nil {
-			fmt.Println("Error generating diff:", err)
-			return 0, nil, nil, err
-		}
+    // Check if the indentation is correct
+    expectedData := []byte(strings.TrimSpace(string(formattedData)))
+    actualData := []byte(strings.TrimSpace(string(data)))
+    if !bytes.Equal(expectedData, actualData) {
+        diff := difflib.UnifiedDiff{
+            A:        difflib.SplitLines(string(data)),
+            B:        difflib.SplitLines(string(formattedData)),
+            ToFile:   path,
+            Context:  3,
+        }
+        text, err := difflib.GetUnifiedDiffString(diff)
+        if err != nil {
+            fmt.Println("Error generating diff:", err)
+            return 0, nil, nil, err
+        }
 
-		return 1, actualData, []byte(text), nil
-	}
+        return 1, actualData, []byte(text), nil
+    }
 
-	fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
-	return 0, data, nil, nil
+    fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
+    return 0, data, nil, nil
 }
+
 
 
 
