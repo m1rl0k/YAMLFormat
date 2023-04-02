@@ -25,7 +25,7 @@ jobs:
 
       - name: Build formatter
         run: |
-         pwd
+         cd ..
          go run main.go
 
 
