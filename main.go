@@ -19,6 +19,8 @@ func main() {
 	}
 
 	totalChanges := 0
+	var changedFiles []string
+
 	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -29,6 +31,9 @@ func main() {
 		ext := filepath.Ext(path)
 		if ext == ".yaml" || ext == ".yml" {
 			changes := formatYAMLFile(path)
+			if changes > 0 {
+				changedFiles = append(changedFiles, path)
+			}
 			totalChanges += changes
 		}
 		return nil
@@ -39,7 +44,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("\n\033[1mTotal changes: %d\033[0m\n", totalChanges)
+	if totalChanges > 0 {
+		fmt.Printf("\n\033[1mTotal changes: %d\033[0m\n", totalChanges)
+		fmt.Println("The following files have changes:")
+		for _, file := range changedFiles {
+			fmt.Printf("- %s\n", file)
+		}
+	} else {
+		fmt.Println("\n\033[32mNo changes needed\033[0m")
+	}
 }
 
 func formatYAMLFile(path string) int {
@@ -92,6 +105,7 @@ func formatDiff(diff string) string {
 
 	return formattedDiff.String()
 }
+
 
 func formatYAML(data []byte) ([]byte, error) {
 	var yamlData interface{}
