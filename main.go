@@ -18,27 +18,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := filepath.Walk(dir, processFile); err != nil {
+	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		ext := filepath.Ext(path)
+		if ext == ".yaml" || ext == ".yml" {
+			return formatYAMLFile(path)
+		}
+
+		return nil
+	}); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-}
-
-func processFile(path string, info os.FileInfo, err error) error {
-	if err != nil {
-		return err
-	}
-
-	if info.IsDir() {
-		return nil
-	}
-
-	ext := filepath.Ext(path)
-	if ext == ".yaml" || ext == ".yml" {
-		return formatYAMLFile(path)
-	}
-
-	return nil
 }
 
 func formatYAMLFile(path string) error {
@@ -53,7 +51,6 @@ func formatYAMLFile(path string) error {
 	}
 
 	if !strings.EqualFold(string(data), string(formattedData)) {
-		fmt.Printf("Differences in YAML file: %s\n", path)
 		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
 			A:        difflib.SplitLines(string(data)),
 			B:        difflib.SplitLines(string(formattedData)),
@@ -61,12 +58,9 @@ func formatYAMLFile(path string) error {
 			ToFile:   "Formatted",
 			Context:  3,
 		})
+		fmt.Printf("Differences in YAML file: %s\n", path)
 		fmt.Println(diff)
-	} else {
-		fmt.Printf("No differences in YAML file: %s\n", path)
 	}
-
-	fmt.Println(strings.Repeat("-", 80))
 
 	return nil
 }
