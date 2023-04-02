@@ -47,12 +47,7 @@ func formatYAMLFile(path string) error {
 		return err
 	}
 
-	var yamlData interface{}
-	if err := yaml.Unmarshal(data, &yamlData); err != nil {
-		return err
-	}
-
-	formattedData, err := yaml.Marshal(yamlData)
+	formattedData, err := formatYAML(data)
 	if err != nil {
 		return err
 	}
@@ -70,4 +65,18 @@ func formatYAMLFile(path string) error {
 	}
 
 	return nil
+}
+
+func formatYAML(data []byte) ([]byte, error) {
+	var yamlData interface{}
+	if err := yaml.Unmarshal(data, &yamlData); err != nil {
+		return nil, err
+	}
+
+	formattedData, err := yaml.Marshal(yamlData)
+	if err != nil {
+		return nil, err
+	}
+
+	return formattedData, nil
 }
