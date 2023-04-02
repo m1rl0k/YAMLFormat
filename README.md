@@ -1,2 +1,2 @@
 # YH-Formatter
-Yaml and HCL formatter for directory
+Yaml formatter for directory
