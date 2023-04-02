@@ -64,36 +64,36 @@ func main() {
 	}
 }
 
-func formatYAMLFile(path string) int {
-    data, err := ioutil.ReadFile(path)
-    if err != nil {
-        fmt.Println("Error reading file:", path, err)
-        return 0
-    }
-    formattedData, err := formatYAML(data)
-    if err != nil {
-        fmt.Println("Error formatting YAML data:", err)
-        return 0
-    }
-    if !strings.EqualFold(string(data), string(formattedData)) {
-        diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
-            A:        difflib.SplitLines(string(data)),
-            B:        difflib.SplitLines(string(formattedData)),
-            FromFile: "Original",
-            ToFile:   "Formatted",
-            Context:  3,
-        })
+func formatYAMLFile(path string) (int, []byte, error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		fmt.Println("Error reading file:", path, err)
+		return 0, nil, err
+	}
+	formattedData, err := formatYAML(data)
+	if err != nil {
+		fmt.Println("Error formatting YAML data:", err)
+		return 0, nil, err
+	}
+	if !bytes.Equal(data, formattedData) {
+		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
+			A:        difflib.SplitLines(string(data)),
+			B:        difflib.SplitLines(string(formattedData)),
+			FromFile: "Original",
+			ToFile:   "Formatted",
+			Context:  3,
+		})
 
-        fmt.Printf("\n\033[33mProposed changes for %s:\033[0m\n", path)
-        fmt.Println(strings.Repeat("=", 50))
-        fmt.Println(formatDiff(diff))
-        fmt.Println(strings.Repeat("=", 50))
+		fmt.Printf("\n\033[33mProposed changes for %s:\033[0m\n", path)
+		fmt.Println(strings.Repeat("=", 50))
+		fmt.Println(formatDiff(diff))
+		fmt.Println(strings.Repeat("=", 50))
 
-        return countChanges(diff)
-    }
+		return countChanges(diff), formattedData, nil
+	}
 
-    fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
-    return 0
+	fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
+	return 0, nil, nil
 }
 
 func formatDiff(diff string) string {
