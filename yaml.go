@@ -53,28 +53,28 @@ func processYAMLFile(path string) {
 		return
 	}
 
+	// Update YAML node style
+	updateYAMLNodeStyle(&parsedContent)
+
 	// Format the parsed YAML content
-	formatted, err := formatYAMLContent(&parsedContent)
+	formatted, err := yaml.Marshal(&parsedContent)
 	if err != nil {
 		log.Printf("Error formatting YAML in file %s: %v\n", path, err)
 		return
 	}
 
 	// Generate and display the diff
-	showDiff(path, string(data), formatted)
+	showDiff(path, string(data), string(formatted))
 }
 
-func formatYAMLContent(parsedContent *yaml.Node) (string, error) {
-	var buffer strings.Builder
-	encoder := yaml.NewEncoder(&buffer)
-	encoder.SetIndent(2)
-	encoder.SetFormat(yaml.FlowStyle)
-
-	if err := encoder.Encode(parsedContent); err != nil {
-		return "", err
+func updateYAMLNodeStyle(node *yaml.Node) {
+	if node.Kind == yaml.MappingNode || node.Kind == yaml.SequenceNode {
+		node.Style = yaml.FlowStyle
 	}
 
-	return buffer.String(), nil
+	for i := 0; i < len(node.Content); i++ {
+		updateYAMLNodeStyle(node.Content[i])
+	}
 }
 
 func showDiff(path, original, formatted string) {
