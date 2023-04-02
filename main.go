@@ -277,3 +277,26 @@ func countChanges(diff string) int {
 	}
 	return count
 }
+func traverseYAMLTree(node interface{}) {
+    switch node := node.(type) {
+    case map[string]interface{}:
+        for key, value := range node {
+            if mapValue, ok := value.(map[string]interface{}); ok {
+                // recursively traverse nested map
+                traverseYAMLTree(mapValue)
+            } else if listValue, ok := value.([]interface{}); ok {
+                // recursively traverse nested list
+                traverseYAMLList(listValue)
+            } else {
+                // handle case where value is not a map or list
+                switch value.(type) {
+                case map[interface{}]interface{}:
+                    // convert map[interface{}]interface{} to map[string]interface{}
+                    mapValue := make(map[string]interface{})
+                    for k, v := range value.(map[interface{}]interface{}) {
+                        mapValue[fmt.Sprintf("%v", k)] = v
+                    }
+                    node[key] = mapValue
+                }
+            }
+        }
