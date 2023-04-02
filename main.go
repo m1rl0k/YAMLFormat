@@ -89,7 +89,7 @@ func formatTerraformFile(path string) error {
 	hclwriteFile := hclwrite.NewEmptyFile()
 	file.Body().Build(hclwriteFile.Body())
 
-	formattedData := hclwrite.Format(hclwriteFile.Bytes())
+	formattedData := hclwriteFile.Bytes()
 
 	if !strings.EqualFold(string(data), string(formattedData)) {
 		diff, _ := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
@@ -109,4 +109,3 @@ func formatTerraformFile(path string) error {
 
 	return nil
 }
-
