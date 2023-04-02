@@ -11,6 +11,8 @@ import (
 
 	
 	"gopkg.in/yaml.v3"
+        "github.com/pmezard/go-difflib/difflib"
+        "gopkg.in/yaml.v2"
         
 
 
@@ -105,7 +107,7 @@ func formatYAMLFile(path string) (int, []byte, error) {
         fmt.Println("Error formatting YAML data:", err)
         return 0, nil, err
     }
-    
+
     // Check if the indentation is correct
     expectedData := []byte(strings.TrimSpace(string(formattedData)))
     actualData := []byte(strings.TrimSpace(string(data)))
@@ -116,10 +118,22 @@ func formatYAMLFile(path string) (int, []byte, error) {
             fmt.Println("Error fixing indentation:", err)
             return 0, nil, err
         }
+
+        // Get the differences between the corrected and original data
+        diff := difflib.UnifiedDiff{
+            A:        difflib.SplitLines(string(actualData)),
+            B:        difflib.SplitLines(string(correctedData)),
+            FromFile: "Original",
+            ToFile:   "Corrected",
+            Context:  3,
+        }
+        diffString, _ := difflib.GetUnifiedDiffString(diff)
+
         if err := ioutil.WriteFile(path, correctedData, 0644); err != nil {
             fmt.Println("Error writing corrected file", path, ":", err)
             return 0, nil, err
         }
+        fmt.Printf("\033[33mChanges made to %s\n%s\033[0m", path, diffString)
         return 1, correctedData, nil
     }
 
