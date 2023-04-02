@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/mattn/go-colorable"
@@ -108,25 +110,24 @@ func showDiff(path, original, formatted string) {
 	}
 }
 
-func suggestFixForLine(line string) string {
-	fixed := strings.TrimSpace(line)
+func findErrorLineAndSuggestFix(data string, err error) (int, string, string) {
+	line := -1
 
-	if strings.Contains(fixed, ":") {
-		parts := strings.SplitN(fixed, ":", 2)
-		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
-
-		// If the value contains a colon, assume it's an error and remove it
-		if strings.Contains(value, ":") {
-			value = strings.Replace(value, ":", "", 1)
+	// Use a regex to extract the line number from the error message
+	re := regexp.MustCompile(`line (\d+):`)
+	matches := re.FindStringSubmatch(err.Error())
+	if len(matches) > 1 {
+		var convErr error
+		line, convErr = strconv.Atoi(matches[1])
+		if convErr != nil {
+			line = -1
 		}
-
-		fixed = fmt.Sprintf("%s: %s", key, value)
-	} else {
-		// If there's no colon, assume it's missing and add one
-		fixed = fmt.Sprintf("%s:", fixed)
 	}
 
-	return fixed
-}
+	lines := strings.Split(data, "\n")
+	if line > 0 && line <= len(lines) {
+		return line, lines[line-1], suggestFixForLine(lines[line-1])
+	}
 
+	return -1, "", ""
+}
