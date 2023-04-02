@@ -87,9 +87,7 @@ func formatTerraformFile(path string) error {
 	}
 
 	hclwriteFile := hclwrite.NewEmptyFile()
-	if err := file.Body().Build(hclwriteFile.Body()); err != nil {
-		return err
-	}
+	file.Body().Build(hclwriteFile.Body())
 
 	formattedData := hclwrite.Format(hclwriteFile.Bytes())
 
@@ -104,10 +102,11 @@ func formatTerraformFile(path string) error {
 		fmt.Printf("Differences in Terraform file: %s\n", path)
 		fmt.Println(diff)
 
-				if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
+		if err := ioutil.WriteFile(path, formattedData, 0644); err != nil {
 			return err
 		}
 	}
 
 	return nil
 }
+
