@@ -470,6 +470,21 @@ func getTypeValue(value interface{}) string {
 		return fmt.Sprintf("%v", value)
 	}
 }
+func generateDiff(originalData, correctedData []byte) []byte {
+	diff := difflib.UnifiedDiff{
+		A:        difflib.SplitLines(string(originalData)),
+		B:        difflib.SplitLines(string(correctedData)),
+		FromFile: "Original",
+		ToFile:   "Formatted",
+		Context:  3,
+	}
+	text, err := difflib.GetUnifiedDiffString(diff)
+	if err != nil {
+		fmt.Println("Error generating diff:", err)
+		return nil
+	}
+	return []byte(text)
+}
 
 
 
