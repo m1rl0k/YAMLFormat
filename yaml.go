@@ -100,17 +100,19 @@ func showDiff(path, original, formatted string) {
 
         // convert diffs to deltas
         deltas := dmp.DiffToDelta(diffs)
-        
+
         // loop through deltas
         pos := 0
         for _, delta := range deltas {
-            switch delta[0] {
+            deltaType := delta[0]
+
+            switch deltaType {
             case '+':
                 fmt.Println("Added:")
             case '-':
                 fmt.Println("Removed:")
             case '=':
-                pos += delta.Length1
+                pos += delta[1]
                 continue
             }
 
@@ -133,10 +135,11 @@ func showDiff(path, original, formatted string) {
                 fmt.Printf("%4d: %s\n", i+1, formatted[i])
             }
 
-            pos += delta.Length1
+            pos += delta[1]
         }
     }
 }
+
 
 func suggestFixForLine(line string) string {
 	fixedLine := line
