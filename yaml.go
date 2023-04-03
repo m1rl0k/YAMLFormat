@@ -93,7 +93,9 @@ func findErrorLineAndSuggestFix(data string, err error) (int, string, string) {
 
 func showDiff(path, original, formatted string) {
 	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(original, formatted, false)
+	chars1, chars2, lines := dmp.DiffLinesToChars(original, formatted)
+	diffs := dmp.DiffMain(chars1, chars2, false)
+	diffs = dmp.DiffCharsToLines(diffs, lines)
 
 	if len(diffs) > 1 {
 		fmt.Printf("Differences in file %s:\n", path)
@@ -140,6 +142,7 @@ func showDiff(path, original, formatted string) {
 		}
 	}
 }
+
 
 func suggestFixForLine(line string) string {
 	fixedLine := line
