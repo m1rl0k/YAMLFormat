@@ -106,16 +106,16 @@ func showDiff(path, original, formatted string) {
         // loop through deltas
         pos := 0
         for _, delta := range deltas {
-            deltaType := delta[0]
+            deltaType := string(delta[0])
 
             switch deltaType {
-            case '+':
+            case "+":
+                length, _ := strconv.Atoi(delta[1:])
                 fmt.Println("Added:")
-                length, _ := strconv.Atoi(delta[1:])
                 pos += length
-            case '-':
-                fmt.Println("Removed:")
+            case "-":
                 length, _ := strconv.Atoi(delta[1:])
+                fmt.Println("Removed:")
                 start := pos - 12
                 if start < 0 {
                     start = 0
@@ -136,13 +136,14 @@ func showDiff(path, original, formatted string) {
                 }
 
                 pos += length
-            case '=':
+            case "=":
                 length, _ := strconv.Atoi(delta[1:])
                 pos += length
             }
         }
     }
 }
+
 
 
 
