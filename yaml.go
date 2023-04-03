@@ -103,14 +103,14 @@ func showDiff(path, original, formatted string) {
 		deltas := dmp.DiffToDelta(diffs)
 		pos := 0
 		for _, delta := range deltas {
-			deltaType := delta[0]
+			deltaType := string(delta[0])
 
 			switch deltaType {
-			case '+':
+			case "+":
 				length, _ := strconv.Atoi(delta[1:])
 				fmt.Println("Added:")
 				pos += length
-			case '-':
+			case "-":
 				length, _ := strconv.Atoi(delta[1:])
 				fmt.Println("Removed:")
 				start := pos - 12
@@ -133,7 +133,7 @@ func showDiff(path, original, formatted string) {
 				}
 
 				pos += length
-			case '=':
+			case "=":
 				length, _ := strconv.Atoi(delta[1:])
 				pos += length
 			}
