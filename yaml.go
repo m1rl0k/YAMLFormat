@@ -111,38 +111,39 @@ func showDiff(path, original, formatted string) {
             switch deltaType {
             case '+':
                 fmt.Println("Added:")
+                length, _ := strconv.Atoi(delta[1:])
+                pos += length
             case '-':
                 fmt.Println("Removed:")
-            case '=':
-                length, _ := strconv.Atoi(strings.TrimPrefix(delta, "="))
+                length, _ := strconv.Atoi(delta[1:])
+                start := pos - 12
+                if start < 0 {
+                    start = 0
+                }
+                end := pos + length + 12
+                if end >= len(original) {
+                    end = len(original) - 1
+                }
+
+                fmt.Println("Original:")
+                for i := start; i <= end; i++ {
+                    fmt.Printf("%4d: %s\n", i+1, string(original[i]))
+                }
+
+                fmt.Println("Formatted:")
+                for i := start; i <= end; i++ {
+                    fmt.Printf("%4d: %s\n", i+1, string(formatted[i]))
+                }
+
                 pos += length
-                continue
+            case '=':
+                length, _ := strconv.Atoi(delta[1:])
+                pos += length
             }
-
-            start := pos - 12
-            if start < 0 {
-                start = 0
-            }
-            end := pos + 12
-            if end >= len(original) {
-                end = len(original) - 1
-            }
-
-            fmt.Println("Original:")
-            for i := start; i <= end; i++ {
-                fmt.Printf("%4d: %s\n", i+1, string(original[i]))
-            }
-
-            fmt.Println("Formatted:")
-            for i := start; i <= end; i++ {
-                fmt.Printf("%4d: %s\n", i+1, string(formatted[i]))
-            }
-
-            length, _ := strconv.Atoi(strings.TrimPrefix(delta, "+"))
-            pos += length
         }
     }
 }
+
 
 
 
