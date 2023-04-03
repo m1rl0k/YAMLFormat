@@ -1,97 +1,95 @@
+package main
 
+import (
+	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+	"unicode"
 
- package main
+	"github.com/sergi/go-diff/diffmatchpatch"
+	"gopkg.in/yaml.v3"
+)
 
- import (
- 	"fmt"
- 	"io/ioutil"
- 	"log"
- 	"os"
- 	"path/filepath"
- 	"regexp"
- 	"strconv"
- 	"strings"
-         "unicode"
+func main() {
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
 
- 	"github.com/sergi/go-diff/diffmatchpatch"
- 	"gopkg.in/yaml.v3"
- )
+	err = filepath.Walk(wd, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && (strings.HasSuffix(info.Name(), ".yaml") || strings.HasSuffix(info.Name(), ".yml")) {
+			processYAMLFile(path)
+		}
+		return nil
+	})
 
- func main() {
- 	wd, err := os.Getwd()
- 	if err != nil {
- 		log.Fatal(err)
- 	}
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
- 	err = filepath.Walk(wd, func(path string, info os.FileInfo, err error) error {
- 		if err != nil {
- 			return err
- 		}
- 		if !info.IsDir() && (strings.HasSuffix(info.Name(), ".yaml") || strings.HasSuffix(info.Name(), ".yml")) {
- 			processYAMLFile(path)
- 		}
- 		return nil
- 	})
+func processYAMLFile(path string) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Printf("Error reading file %s: %v\n", path, err)
+		return
+	}
 
- 	if err != nil {
- 		log.Fatal(err)
- 	}
- }
+	var parsedContent yaml.Node
+	err = yaml.Unmarshal(data, &parsedContent)
+	if err != nil {
+		log.Printf("Error parsing YAML in file %s: %v\n", path, err)
+		return
+	}
 
- func processYAMLFile(path string) {
- 	data, err := ioutil.ReadFile(path)
- 	if err != nil {
- 		log.Printf("Error reading file %s: %v\n", path, err)
- 		return
- 	}
+	updateYAMLNodeStyle(&parsedContent)
 
- 	var parsedContent yaml.Node
- 	err = yaml.Unmarshal(data, &parsedContent)
- 	if err != nil {
- 		log.Printf("Error parsing YAML in file %s: %v\n", path, err)
- 		return
- 	}
+	formatted, err := yaml.Marshal(&parsedContent)
+	if err != nil {
+		log.Printf("Error formatting YAML in file %s: %v\n", path, err)
+		return
+	}
 
- 	updateYAMLNodeStyle(&parsedContent)
+	showDiff(path, string(data), string(formatted))
+}
 
- 	formatted, err := yaml.Marshal(&parsedContent)
- 	if err != nil {
- 		log.Printf("Error formatting YAML in file %s: %v\n", path, err)
- 		return
- 	}
+func updateYAMLNodeStyle(node *yaml.Node) {
+	if node.Kind == yaml.MappingNode || node.Kind == yaml.SequenceNode {
+		node.Style = yaml.FlowStyle
+	}
+	for i := 0; i < len(node.Content); i++ {
+		updateYAMLNodeStyle(node.Content[i])
+	}
+}
 
- 	showDiff(path, string(data), string(formatted))
- }
+func findErrorLineAndSuggestFix(data string, err error) (int, string, string) {
+	line := -1
 
- func updateYAMLNodeStyle(node *yaml.Node) {
- 	if node.Kind == yaml.MappingNode || node.Kind == yaml.SequenceNode {
- 		node.Style = yaml.FlowStyle
- 	}
- 	for i := 0; i < len(node.Content); i++ {
- 		updateYAMLNodeStyle(node.Content[i])
- 	}
- }
+	re := regexp.MustCompile(`line (\d+):`)
+	matches := re.FindStringSubmatch(err.Error())
+	if len(matches) > 1 {
+		var err error
+		line, err = strconv.Atoi(matches[1])
+		if err != nil {
+			line = -1
+		}
+	}
 
- func findErrorLineAndSuggestFix(data string, err error) (int, string, string) {
- 	line := -1
+	lines := strings.Split(data, "\n")
+	if line > 0 && line <= len(lines) {
+		return line, lines[line-1], suggestFixForLine(lines[line-1])
+	}
 
- 	re := regexp.MustCompile(`line (\d+):`)
- 	matches := re.FindStringSubmatch(err.Error())
- 	if len(matches) > 1 {
- 		var err error
- 		line, err = strconv.Atoi(matches[1])
- 		if err != nil {
- 			line = -1
- 		}
- 	}
-
- 	lines := strings.Split(data, "\n")
- 	if line > 0 && line <= len(lines) {
- 		return line, lines[line-1], suggestFixForLine(lines[line-1])
- 	}
-
- 	return -1, "", ""
- }
+	return -1, "", ""
+}
 
 func showDiff(path, original, formatted string) {
 	dmp := diffmatchpatch.New()
@@ -109,6 +107,7 @@ func showDiff(path, original, formatted string) {
 			case "+":
 				length, _ := strconv.Atoi(delta[1:])
 				fmt.Println("Added:")
+				fmt.Println(delta[2:])
 				pos += length
 			case "-":
 				length, _ := strconv.Atoi(delta[1:])
@@ -140,11 +139,6 @@ func showDiff(path, original, formatted string) {
 		}
 	}
 }
-
-
-
-
-
 
 func suggestFixForLine(line string) string {
 	fixedLine := line
