@@ -13,6 +13,7 @@ import (
 
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"gopkg.in/yaml.v3"
+        "github.com/pmezard/go-difflib/difflib"
 )
 
 func main() {
