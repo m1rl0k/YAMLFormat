@@ -439,3 +439,4 @@ func generateDiff(originalData, correctedData []byte) string {
  		buf.WriteString("\n")
  	}
  	return buf.String()
+}
