@@ -94,55 +94,53 @@
  }
 
 func showDiff(path, original, formatted string) {
-    dmp := diffmatchpatch.New()
-    diffs := dmp.DiffMain(original, formatted, false)
+	dmp := diffmatchpatch.New()
+	diffs := dmp.DiffMain(original, formatted, false)
 
-    if len(diffs) > 1 {
-        fmt.Printf("Differences in file %s:\n", path)
+	if len(diffs) > 1 {
+		fmt.Printf("Differences in file %s:\n", path)
 
-        // convert diffs to deltas
-        deltas := dmp.DiffToDelta(diffs)
+		deltas := dmp.DiffToDelta(diffs)
+		pos := 0
+		for _, delta := range deltas {
+			deltaType := delta[0]
 
-        // loop through deltas
-        pos := 0
-        for _, delta := range deltas {
-            deltaType := string(delta[0])
+			switch deltaType {
+			case '+':
+				length, _ := strconv.Atoi(delta[1:])
+				fmt.Println("Added:")
+				pos += length
+			case '-':
+				length, _ := strconv.Atoi(delta[1:])
+				fmt.Println("Removed:")
+				start := pos - 12
+				if start < 0 {
+					start = 0
+				}
+				end := pos + length + 12
+				if end >= len(original) {
+					end = len(original) - 1
+				}
 
-            switch deltaType {
-            case "+":
-                length, _ := strconv.Atoi(delta[1:])
-                fmt.Println("Added:")
-                pos += length
-            case "-":
-                length, _ := strconv.Atoi(delta[1:])
-                fmt.Println("Removed:")
-                start := pos - 12
-                if start < 0 {
-                    start = 0
-                }
-                end := pos + length + 12
-                if end >= len(original) {
-                    end = len(original) - 1
-                }
+				fmt.Println("Original:")
+				for i := start; i <= end; i++ {
+					fmt.Printf("%4d: %s\n", i+1, string(original[i]))
+				}
 
-                fmt.Println("Original:")
-                for i := start; i <= end; i++ {
-                    fmt.Printf("%4d: %s\n", i+1, string(original[i]))
-                }
+				fmt.Println("Formatted:")
+				for i := start; i <= end; i++ {
+					fmt.Printf("%4d: %s\n", i+1, string(formatted[i]))
+				}
 
-                fmt.Println("Formatted:")
-                for i := start; i <= end; i++ {
-                    fmt.Printf("%4d: %s\n", i+1, string(formatted[i]))
-                }
-
-                pos += length
-            case "=":
-                length, _ := strconv.Atoi(delta[1:])
-                pos += length
-            }
-        }
-    }
+				pos += length
+			case '=':
+				length, _ := strconv.Atoi(delta[1:])
+				pos += length
+			}
+		}
+	}
 }
+
 
 
 
