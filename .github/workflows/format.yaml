@@ -23,5 +23,5 @@ jobs:
         run: |
          
          go mod tidy
-         go run yaml.go
+         go run yaml.go main.go
         
