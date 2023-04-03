@@ -112,7 +112,7 @@ func showDiff(path, original, formatted string) {
             case '-':
                 fmt.Println("Removed:")
             case '=':
-                pos += delta[1]
+                pos += int(delta[1])
                 continue
             }
 
@@ -127,18 +127,19 @@ func showDiff(path, original, formatted string) {
 
             fmt.Println("Original:")
             for i := start; i <= end; i++ {
-                fmt.Printf("%4d: %s\n", i+1, original[i])
+                fmt.Printf("%4d: %s\n", i+1, string(original[i]))
             }
 
             fmt.Println("Formatted:")
             for i := start; i <= end; i++ {
-                fmt.Printf("%4d: %s\n", i+1, formatted[i])
+                fmt.Printf("%4d: %s\n", i+1, string(formatted[i]))
             }
 
-            pos += delta[1]
+            pos += int(delta[1])
         }
     }
 }
+
 
 
 func suggestFixForLine(line string) string {
