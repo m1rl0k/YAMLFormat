@@ -92,6 +92,7 @@
 
  	return -1, "", ""
  }
+
 func showDiff(path, original, formatted string) {
     dmp := diffmatchpatch.New()
     diffs := dmp.DiffMain(original, formatted, false)
@@ -113,7 +114,7 @@ func showDiff(path, original, formatted string) {
             case '-':
                 fmt.Println("Removed:")
             case '=':
-                length, _ := strconv.Atoi(string(delta[1:]))
+                length, _ := strconv.Atoi(strings.TrimPrefix(delta, "="))
                 pos += length
                 continue
             }
@@ -137,11 +138,12 @@ func showDiff(path, original, formatted string) {
                 fmt.Printf("%4d: %s\n", i+1, string(formatted[i]))
             }
 
-            length, _ := strconv.Atoi(string(delta[1:]))
+            length, _ := strconv.Atoi(strings.TrimPrefix(delta, "+"))
             pos += length
         }
     }
 }
+
 
 
 func suggestFixForLine(line string) string {
