@@ -98,48 +98,48 @@ func showDiff(path, original, formatted string) {
 	if len(diffs) > 1 {
 		fmt.Printf("Differences in file %s:\n", path)
 
-		deltas := dmp.DiffToDelta(diffs)
-		pos := 0
-		for _, delta := range deltas {
-			deltaType := string(delta[0])
+		var addedLines []string
+		var removedLines []string
 
-			switch deltaType {
-			case "+":
-				length, _ := strconv.Atoi(string(delta[1:]))
-				fmt.Println("Added:")
-				fmt.Println(delta[2:])
-				pos += length
-			case "-":
-				length, _ := strconv.Atoi(string(delta[1:]))
-				fmt.Println("Removed:")
-				start := pos - 12
-				if start < 0 {
-					start = 0
-				}
-				end := pos + length + 12
-				if end >= len(original) {
-					end = len(original) - 1
-				}
+		for _, diff := range diffs {
+			switch diff.Type {
+			case diffmatchpatch.DiffInsert:
+				addedLines = append(addedLines, diff.Text)
+			case diffmatchpatch.DiffDelete:
+				removedLines = append(removedLines, diff.Text)
+			}
+		}
 
-				fmt.Println("Original:")
-				for i := start; i <= end; i++ {
-					fmt.Printf("%4d: %s\n", i+1, string(original[i]))
-				}
+		if len(addedLines) > 0 {
+			fmt.Println("Added:")
+			for _, line := range addedLines {
+				fmt.Print(line)
+			}
+		}
 
-				fmt.Println("Formatted:")
-				for i := start; i <= end; i++ {
-					fmt.Printf("%4d: %s\n", i+1, string(formatted[i]))
-				}
+		if len(removedLines) > 0 {
+			fmt.Println("Removed:")
+			for _, line := range removedLines {
+				fmt.Print(line)
+			}
+		}
 
-				pos += length
-			case "=":
-				length, _ := strconv.Atoi(string(delta[1:]))
-				pos += length
+		if len(addedLines) > 0 && len(removedLines) > 0 {
+			fmt.Println("Changes:")
+			diffs = dmp.DiffMain(strings.Join(removedLines, ""), strings.Join(addedLines, ""), false)
+			for _, diff := range diffs {
+				switch diff.Type {
+				case diffmatchpatch.DiffEqual:
+					fmt.Print(diff.Text)
+				case diffmatchpatch.DiffInsert:
+					fmt.Printf("\x1b[32m%s\x1b[0m", diff.Text)
+				case diffmatchpatch.DiffDelete:
+					fmt.Printf("\x1b[31m%s\x1b[0m", diff.Text)
+				}
 			}
 		}
 	}
 }
-
 
 func suggestFixForLine(line string) string {
 	fixedLine := line
