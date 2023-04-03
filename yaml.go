@@ -98,25 +98,20 @@ func showDiff(path, original, formatted string) {
 	if len(diffs) > 1 {
 		fmt.Printf("Differences in file %s:\n", path)
 
-		deltas := dmp.DiffToDelta(diffs)
-		pos := 0
-		for _, delta := range deltas {
-			deltaType := string(delta[0])
+		for _, delta := range diffs {
+			deltaType := delta.Type
 
 			switch deltaType {
-			case "+":
-				length, _ := strconv.Atoi(delta[1:])
+			case diffmatchpatch.DiffInsert:
 				fmt.Println("Added:")
-				fmt.Println(delta[2:])
-				pos += length
-			case "-":
-				length, _ := strconv.Atoi(delta[1:])
+				fmt.Println(delta.Text)
+			case diffmatchpatch.DiffDelete:
 				fmt.Println("Removed:")
-				start := pos - 12
+				start := delta.Start1 - 12
 				if start < 0 {
 					start = 0
 				}
-				end := pos + length + 12
+				end := delta.Start1 + len(delta.Text) + 12
 				if end >= len(original) {
 					end = len(original) - 1
 				}
@@ -130,15 +125,11 @@ func showDiff(path, original, formatted string) {
 				for i := start; i <= end; i++ {
 					fmt.Printf("%4d: %s\n", i+1, string(formatted[i]))
 				}
-
-				pos += length
-			case "=":
-				length, _ := strconv.Atoi(delta[1:])
-				pos += length
 			}
 		}
 	}
 }
+
 
 func suggestFixForLine(line string) string {
 	fixedLine := line
