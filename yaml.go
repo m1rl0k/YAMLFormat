@@ -112,7 +112,8 @@ func showDiff(path, original, formatted string) {
             case '-':
                 fmt.Println("Removed:")
             case '=':
-                pos += int(delta[1])
+                length, _ := strconv.Atoi(string(delta[1:]))
+                pos += length
                 continue
             }
 
@@ -135,7 +136,8 @@ func showDiff(path, original, formatted string) {
                 fmt.Printf("%4d: %s\n", i+1, string(formatted[i]))
             }
 
-            pos += int(delta[1])
+            length, _ := strconv.Atoi(string(delta[1:]))
+            pos += length
         }
     }
 }
