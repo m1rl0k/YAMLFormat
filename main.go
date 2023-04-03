@@ -421,9 +421,6 @@ func generateDiff(originalData, correctedData []byte) string {
  		fmt.Println("Error generating diff:", err)
  		return ""
  	}
- 	return text
-}
-
  	// Add color coding of the terminal using ASCII escape codes
  	lines := strings.Split(text, "\n")
  	var buf bytes.Buffer
@@ -442,4 +439,3 @@ func generateDiff(originalData, correctedData []byte) string {
  		buf.WriteString("\n")
  	}
  	return buf.String()
- }
