@@ -181,34 +181,65 @@ func suggestFixForLine(line string) string {
 }
 
 func generateDiff(originalData, correctedData []byte) string {
+	// Parse YAML and split into lines
+	originalLines, err := parseYAMLAndSplitLines(originalData)
+	if err != nil {
+		fmt.Println("Error parsing original YAML data:", err)
+		return ""
+	}
+	correctedLines, err := parseYAMLAndSplitLines(correctedData)
+	if err != nil {
+		fmt.Println("Error parsing corrected YAML data:", err)
+		return ""
+	}
+
+	// Create a unified diff using the difflib package
 	diff := difflib.UnifiedDiff{
-		A:        difflib.SplitLines(string(originalData)),
-		B:        difflib.SplitLines(string(correctedData)),
+		A:        originalLines,
+		B:        correctedLines,
 		FromFile: "Original",
 		ToFile:   "Formatted",
 		Context:  3,
 	}
 	text, err := difflib.GetUnifiedDiffString(diff)
 	if err != nil {
- 		fmt.Println("Error generating diff:", err)
- 		return ""
- 	}
- 	// Add color coding of the terminal using ASCII escape codes
- 	lines := strings.Split(text, "\n")
- 	var buf bytes.Buffer
- 	for _, line := range lines {
- 		switch {
- 		case strings.HasPrefix(line, "+"):
- 			buf.WriteString("\033[32m") // Green
- 		case strings.HasPrefix(line, "-"):
- 			buf.WriteString("\033[31m") // Red
- 		case strings.HasPrefix(line, "@"):
- 			buf.WriteString("\033[36m") // Cyan
- 		default:
- 			buf.WriteString("\033[0m") // Reset
- 		}
- 		buf.WriteString(line)
- 		buf.WriteString("\n")
- 	}
- 	return buf.String()
+		fmt.Println("Error generating diff:", err)
+		return ""
+	}
+
+	// Add color coding of the terminal using ASCII escape codes
+	lines := strings.Split(text, "\n")
+	var buf strings.Builder
+	for _, line := range lines {
+		switch {
+		case strings.HasPrefix(line, "+"):
+			buf.WriteString("\033[32m") // Green
+		case strings.HasPrefix(line, "-"):
+			buf.WriteString("\033[31m") // Red
+		case strings.HasPrefix(line, "@"):
+			buf.WriteString("\033[36m") // Cyan
+		default:
+			buf.WriteString("\033[0m") // Reset
+		}
+		buf.WriteString(line)
+		buf.WriteString("\n")
+	}
+	return buf.String()
+}
+
+// parseYAMLAndSplitLines takes a byte slice of YAML data,
+// and returns a slice of strings representing the lines.
+func parseYAMLAndSplitLines(yamlData []byte) ([]string, error) {
+	var parsedYAML interface{}
+	err := yaml.Unmarshal(yamlData, &parsedYAML)
+	if err != nil {
+		return nil, err
+	}
+
+	formattedYAML, err := yaml.Marshal(parsedYAML)
+	if err != nil {
+		return nil, err
+	}
+
+	return strings.Split(string(formattedYAML), "\n"), nil
 }
