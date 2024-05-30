@@ -7,13 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"unicode"
 
-	"github.com/sergi/go-diff/diffmatchpatch"
 	"gopkg.in/yaml.v3"
-        "github.com/pmezard/go-difflib/difflib"
 )
 
 func main() {
@@ -71,79 +68,56 @@ func updateYAMLNodeStyle(node *yaml.Node) {
 	}
 }
 
-func findErrorLineAndSuggestFix(data string, err error) (int, string, string) {
-	line := -1
-
-	re := regexp.MustCompile(`line (\d+):`)
-	matches := re.FindStringSubmatch(err.Error())
-	if len(matches) > 1 {
-		var err error
-		line, err = strconv.Atoi(matches[1])
-		if err != nil {
-			line = -1
-		}
-	}
-
-	lines := strings.Split(data, "\n")
-	if line > 0 && line <= len(lines) {
-		return line, lines[line-1], suggestFixForLine(lines[line-1])
-	}
-
-	return -1, "", ""
-}
-
 func showDiff(path, original, formatted string) {
-	dmp := diffmatchpatch.New()
-	chars1, chars2, lines := dmp.DiffLinesToChars(original, formatted)
-	diffs := dmp.DiffMain(chars1, chars2, false)
-	diffs = dmp.DiffCharsToLines(diffs, lines)
+	var builder strings.Builder
+	originalLines := strings.Split(original, "\n")
+	formattedLines := strings.Split(formatted, "\n")
 
-	if len(diffs) > 1 {
-		fmt.Printf("Differences in file %s:\n", path)
-
-		var addedLines []string
-		var removedLines []string
-
-		for _, diff := range diffs {
-			switch diff.Type {
-			case diffmatchpatch.DiffInsert:
-				addedLines = append(addedLines, diff.Text)
-			case diffmatchpatch.DiffDelete:
-				removedLines = append(removedLines, diff.Text)
-			}
+	for i := 0; i < len(originalLines) || i < len(formattedLines); i++ {
+		var originalLine, formattedLine string
+		if i < len(originalLines) {
+			originalLine = originalLines[i]
+		}
+		if i < len(formattedLines) {
+			formattedLine = formattedLines[i]
 		}
 
-		if len(addedLines) > 0 {
-			fmt.Println("Added:")
-			for _, line := range addedLines {
-				fmt.Print(line)
+		switch {
+		case originalLine == formattedLine:
+			builder.WriteString(originalLine)
+			builder.WriteString("\n")
+		case len(originalLine) == 0:
+			builder.WriteString("\x1b[32m" + formattedLine + "\x1b[0m")
+			builder.WriteString("\n")
+		case len(formattedLine) == 0:
+			builder.WriteString("\x1b[31m" + originalLine + "\x1b[0m")
+			builder.WriteString("\n")
+		default:
+			start := 0
+			for start < len(originalLine) && start < len(formattedLine) && originalLine[start] == formattedLine[start] {
+				start++
 			}
-		}
-
-		if len(removedLines) > 0 {
-			fmt.Println("Removed:")
-			for _, line := range removedLines {
-				fmt.Print(line)
+			end := 0
+			for end < len(originalLine)-start && end < len(formattedLine)-start && originalLine[len(originalLine)-end-1] == formattedLine[len(formattedLine)-end-1] {
+				end++
 			}
-		}
-
-		if len(addedLines) > 0 && len(removedLines) > 0 {
-			fmt.Println("Changes:")
-			diffs = dmp.DiffMain(strings.Join(removedLines, ""), strings.Join(addedLines, ""), false)
-			for _, diff := range diffs {
-				switch diff.Type {
-				case diffmatchpatch.DiffEqual:
-					fmt.Print(diff.Text)
-				case diffmatchpatch.DiffInsert:
-					fmt.Printf("\x1b[32m%s\x1b[0m", diff.Text)
-				case diffmatchpatch.DiffDelete:
-					fmt.Printf("\x1b[31m%s\x1b[0m", diff.Text)
-				}
+			if start > 0 || end > 0 {
+				builder.WriteString(originalLine[:start])
 			}
+			builder.WriteString("\x1b[31m" + originalLine[start:len(originalLine)-end] + "\x1b[0m")
+			builder.WriteString("\x1b[32m" + formattedLine[start:len(formattedLine)-end] + "\x1b[0m")
+			if start > 0 || end > 0 {
+				builder.WriteString(formattedLine[len(formattedLine)-end:])
+			}
+			builder.WriteString("\n")
 		}
 	}
-}
 
+	diff := builder.String()
+	if diff != "" {
+		fmt.Printf("Differences in file %s:\n%s", path, diff)
+	}
+}
 
 func suggestFixForLine(line string) string {
 	fixedLine := line
@@ -177,69 +151,18 @@ func suggestFixForLine(line string) string {
 		fixedLine = strings.Repeat(" ", correctIndentation) + strings.TrimSpace(line)
 	}
 
-	return fixedLine
-}
-
-func generateDiff(originalData, correctedData []byte) string {
-	// Parse YAML and split into lines
-	originalLines, err := parseYAMLAndSplitLines(originalData)
-	if err != nil {
-		fmt.Println("Error parsing original YAML data:", err)
-		return ""
-	}
-	correctedLines, err := parseYAMLAndSplitLines(correctedData)
-	if err != nil {
-		fmt.Println("Error parsing corrected YAML data:", err)
-		return ""
-	}
-
-	// Create a unified diff using the difflib package
-	diff := difflib.UnifiedDiff{
-		A:        originalLines,
-		B:        correctedLines,
-		FromFile: "Original",
-		ToFile:   "Formatted",
-		Context:  3,
-	}
-	text, err := difflib.GetUnifiedDiffString(diff)
-	if err != nil {
-		fmt.Println("Error generating diff:", err)
-		return ""
-	}
-
-	// Add color coding of the terminal using ASCII escape codes
-	lines := strings.Split(text, "\n")
-	var buf strings.Builder
-	for _, line := range lines {
-		switch {
-		case strings.HasPrefix(line, "+"):
-			buf.WriteString("\033[32m") // Green
-		case strings.HasPrefix(line, "-"):
-			buf.WriteString("\033[31m") // Red
-		case strings.HasPrefix(line, "@"):
-			buf.WriteString("\033[36m") // Cyan
-		default:
-			buf.WriteString("\033[0m") // Reset
+	// Check for missing quotes around strings
+	re := regexp.MustCompile(`[^#]\s*\S*:\s*\S+`)
+	matches := re.FindAllStringIndex(fixedLine, -1)
+	for _, match := range matches {
+		value := fixedLine[match[1]:]
+		if !strings.HasPrefix(value, "'") && !strings.HasPrefix(value, "\"") {
+			valueStart := strings.IndexFunc(value, func(r rune) bool { return !unicode.IsSpace(r) })
+			if valueStart != -1 {
+				fixedLine = fixedLine[:match[1]+valueStart] + "\"" + value[valueStart:] + "\""
+			}
 		}
-		buf.WriteString(line)
-		buf.WriteString("\n")
-	}
-	return buf.String()
-}
-
-// parseYAMLAndSplitLines takes a byte slice of YAML data,
-// and returns a slice of strings representing the lines.
-func parseYAMLAndSplitLines(yamlData []byte) ([]string, error) {
-	var parsedYAML interface{}
-	err := yaml.Unmarshal(yamlData, &parsedYAML)
-	if err != nil {
-		return nil, err
 	}
 
-	formattedYAML, err := yaml.Marshal(parsedYAML)
-	if err != nil {
-		return nil, err
-	}
-
-	return strings.Split(string(formattedYAML), "\n"), nil
+	return fixedLine
 }
