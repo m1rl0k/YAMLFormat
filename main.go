@@ -1,17 +1,18 @@
 package main
+
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
-        "bytes"
-	
+	"unicode"
+
+	"github.com/pmezard/go-difflib/difflib"
 	"gopkg.in/yaml.v3"
-        "github.com/pmezard/go-difflib/difflib"
-       
-        
 )
+
 func main() {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -66,175 +67,56 @@ func main() {
 		fmt.Println("\n\033[32mNo changes needed\033[0m")
 	}
 }
+
 func formatYAMLFile(path string) (int, []byte, []byte, error) {
-    data, err := ioutil.ReadFile(path)
-    if err != nil {
-        fmt.Println("Error reading file:", path, err)
-        return 0, nil, nil, err
-    }
-    // Attempt to parse the YAML data
-    var yamlData interface{}
-    if err := yaml.Unmarshal(data, &yamlData); err != nil {
-        // Handle the error by applying corrections to the data
-        correctedData, changes, err := correctYAMLData(data)
-        if err != nil {
-            fmt.Println("Error correcting YAML data:", err)
-            return 0, nil, nil, err
-        }
-        // Return the corrected data and the number of changes made
-        if changes {
-            return 1, nil, correctedData, nil
-        }
-        // Return the original data if no corrections were made
-        return 0, data, nil, nil
-    }
-    // If the data was successfully parsed, reformat it and compare to the original
-    formattedData, err := yaml.Marshal(removeEmptyNodes(yamlData))
-    if err != nil {
-        fmt.Println("Error formatting YAML data:", err)
-        return 0, nil, nil, err
-    }
-    // Check if the indentation is correct
-    expectedData := []byte(strings.TrimSpace(string(formattedData)))
-    actualData := []byte(strings.TrimSpace(string(data)))
-    if !bytes.Equal(expectedData, actualData) {
-        diff := difflib.UnifiedDiff{
-            A:        difflib.SplitLines(string(data)),
-            B:        difflib.SplitLines(string(formattedData)),
-            ToFile:   path,
-            Context:  3,
-        }
-        text, err := difflib.GetUnifiedDiffString(diff)
-        if err != nil {
-            fmt.Println("Error generating diff:", err)
-            return 0, nil, nil, err
-        }
-        return 1, actualData, []byte(text), nil
-    }
-    fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
-    return 0, data, nil, nil
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		fmt.Println("Error reading file:", path, err)
+		return 0, nil, nil, err
+	}
+	var yamlData interface{}
+	if err := yaml.Unmarshal(data, &yamlData); err != nil {
+		correctedData, changes, err := correctYAMLData(data)
+		if err != nil {
+			fmt.Println("Error correcting YAML data:", err)
+			return 0, nil, nil, err
+		}
+		if changes {
+			return 1, nil, correctedData, nil
+		}
+		return 0, data, nil, nil
+	}
+	formattedData, err := yaml.Marshal(removeEmptyNodes(yamlData))
+	if err != nil {
+		fmt.Println("Error formatting YAML data:", err)
+		return 0, nil, nil, err
+	}
+	expectedData := []byte(strings.TrimSpace(string(formattedData)))
+	actualData := []byte(strings.TrimSpace(string(data)))
+	if !bytes.Equal(expectedData, actualData) {
+		diff := difflib.UnifiedDiff{
+			A:        difflib.SplitLines(string(data)),
+			B:        difflib.SplitLines(string(formattedData)),
+			ToFile:   path,
+			Context:  3,
+		}
+		text, err := difflib.GetUnifiedDiffString(diff)
+		if err != nil {
+			fmt.Println("Error generating diff:", err)
+			return 0, nil, nil, err
+		}
+		return 1, actualData, []byte(text), nil
+	}
+	fmt.Printf("\033[32mNo changes needed for %s\n\033[0m", path)
+	return 0, data, nil, nil
 }
-func fixIndentation(expectedData, actualData []byte) ([]byte, error) {
-    // Use a YAML library to parse both the expected and actual data
-    var expectedYaml, actualYaml interface{}
-    if err := yaml.Unmarshal(expectedData, &expectedYaml); err != nil {
-        return nil, err
-    }
-    if err := yaml.Unmarshal(actualData, &actualYaml); err != nil {
-        return nil, err
-    }
-    
-    // Generate a map of expected node paths to indentation levels
-    pathIndentMap := make(map[string]int)
-    generatePathIndentMap(expectedYaml, pathIndentMap, 0)
-    
-    // Use the pathIndentMap to generate the corrected data
-    correctedData := generateCorrectedData(actualYaml, pathIndentMap, 0)
-    return correctedData, nil
-}
-func generatePathIndentMap(node interface{}, pathIndentMap map[string]int, indentLevel int) {
-    switch node := node.(type) {
-    case map[interface{}]interface{}:
-        for k, v := range node {
-            path := fmt.Sprintf("%s.%s", k, getTypeName(v))
-            pathIndentMap[path] = indentLevel
-            generatePathIndentMap(v, pathIndentMap, indentLevel+1)
-        }
-    case []interface{}:
-        for i, v := range node {
-            path := fmt.Sprintf("[%d].%s", i, getTypeName(v))
-            pathIndentMap[path] = indentLevel
-            generatePathIndentMap(v, pathIndentMap, indentLevel+1)
-        }
-    }
-}
-func traverseYAMLTree(node interface{}) bool {
-    switch node := node.(type) {
-    case map[string]interface{}:
-        for key, value := range node {
-            if mapValue, ok := value.(map[string]interface{}); ok {
-                // recursively traverse nested map
-                if traverseYAMLTree(mapValue) {
-                    node[key] = mapValue
-                }
-            } else if listValue, ok := value.([]interface{}); ok {
-                // recursively traverse nested list
-                if traverseYAMLList(listValue) {
-                    node[key] = listValue
-                }
-            } else {
-                // handle case where value is not a map or list
-                switch value.(type) {
-                case map[interface{}]interface{}:
-                    // convert map[interface{}]interface{} to map[string]interface{}
-                    mapValue := make(map[string]interface{})
-                    for k, v := range value.(map[interface{}]interface{}) {
-                        mapValue[fmt.Sprintf("%v", k)] = v
-                    }
-                    node[key] = mapValue
-                    return true
-                case string:
-                    // attempt to correct string value
-                    if newValue := correctString(value.(string)); newValue != value {
-                        node[key] = newValue
-                        return true
-                    }
-                case nil:
-                    // delete key with nil value
-                    delete(node, key)
-                    return true
-                }
-            }
-        }
-    case []interface{}:
-        // recursively traverse list
-        if traverseYAMLList(node) {
-            return true
-        }
-    }
-    return false
-}
-func traverseYAMLList(list []interface{}) bool {
-    changed := false
-    for i, item := range list {
-        if mapValue, ok := item.(map[string]interface{}); ok {
-            // recursively traverse nested map
-            if traverseYAMLTree(mapValue) {
-                list[i] = mapValue
-                changed = true
-            }
-        } else if nestedList, ok := item.([]interface{}); ok {
-            // recursively traverse nested list
-            if traverseYAMLList(nestedList) {
-                list[i] = nestedList
-                changed = true
-            }
-        } else {
-            // handle case where value is not a map or list
-            switch item.(type) {
-            case map[interface{}]interface{}:
-                // convert map[interface{}]interface{} to map[string]interface{}
-                mapValue := make(map[string]interface{})
-                for k, v := range item.(map[interface{}]interface{}) {
-                    mapValue[fmt.Sprintf("%v", k)] = v
-                }
-                list[i] = mapValue
-                changed = true
-            }
-        }
-    }
-    return changed
-}
+
 func correctYAMLData(data []byte) ([]byte, bool, error) {
 	var yamlData interface{}
 	if err := yaml.Unmarshal(data, &yamlData); err != nil {
 		return nil, false, err
 	}
-	
-	// Recursively traverse the YAML tree and correct any formatting errors
 	corrected := traverseYAMLTree(yamlData)
-	
-	// If corrections were made, reformat the YAML data and return it
 	if corrected {
 		correctedData, err := yaml.Marshal(yamlData)
 		if err != nil {
@@ -242,172 +124,121 @@ func correctYAMLData(data []byte) ([]byte, bool, error) {
 		}
 		return correctedData, true, nil
 	}
-	
-	// If no corrections were made, return the original data
 	return data, false, nil
 }
-func formatDiff(diff string) string {
-	var formattedDiff strings.Builder
-	for _, line := range strings.Split(diff, "\n") {
-		switch {
-		case strings.HasPrefix(line, "+"):
-			formattedDiff.WriteString("\033[32m" + line + "\033[0m")
-		case strings.HasPrefix(line, "-"):
-			formattedDiff.WriteString("\033[31m" + line + "\033[0m")
-		default:
-			formattedDiff.WriteString(line)
-		}
-		formattedDiff.WriteString("\n")
-	}
-	return formattedDiff.String()
-}
-func formatYAML(data []byte) ([]byte, error) {
-	var yamlData interface{}
-	if err := yaml.Unmarshal(data, &yamlData); err != nil {
-		return nil, err
-	}
-	traverseYAMLTree(yamlData)
-	formattedData, err := yaml.Marshal(yamlData)
-	if err != nil {
-		return nil, err
-	}
-	return formattedData, nil
-}
-func removeEmptyNodes(node interface{}) interface{} {
-    switch node := node.(type) {
-    case map[string]interface{}:
-        for key, value := range node {
-            node[key] = removeEmptyNodes(value)
-        }
-        // remove any keys with empty values
-        for key, value := range node {
-            if isEmpty(value) {
-                delete(node, key)
-            }
-        }
-    case []interface{}:
-        for i := range node {
-            node[i] = removeEmptyNodes(node[i])
-        }
-        // remove any empty nodes from list
-        for i := 0; i < len(node); i++ {
-            if isEmpty(node[i]) {
-                node = append(node[:i], node[i+1:]...)
-                i--
-            }
-        }
-    }
-    return node
-}
-func isEmpty(node interface{}) bool {
-    switch node := node.(type) {
-    case map[string]interface{}:
-        return len(node) == 0
-    case []interface{}:
-        return len(node) == 0
-    case string:
-        return node == ""
-    default:
-        return false
-    }
-}
-func correctString(str string) string {
-    str = strings.TrimSpace(str)
-    str = strings.ReplaceAll(str, "\\n", "\n")
-    return str
-}
-func countChanges(diff string) int {
-	count := 0
-	for _, line := range strings.Split(diff, "\n") {
-		if strings.HasPrefix(line, "+") || strings.HasPrefix(line, "-") {
-			if !strings.HasPrefix(line, "+++") && !strings.HasPrefix(line, "---") {
-				count++
-			}
-		}
-	}
-	return count
-}
-func getTypeName(v interface{}) string {
-	switch v.(type) {
-	case map[interface{}]interface{}, []interface{}:
-		return "map"
-	case string:
-		return "string"
-	case bool:
-		return "bool"
-	case int, int8, int16, int32, int64:
-		return "int"
-	case uint, uint8, uint16, uint32, uint64:
-		return "uint"
-	case float32, float64:
-		return "float"
-	default:
-		return "unknown"
-	}
-}
-func generateCorrectedData(actualData interface{}, pathIndentMap map[string]int, indentLevel int) []byte {
-	var buf bytes.Buffer
-	switch actualData := actualData.(type) {
-	case map[interface{}]interface{}:
-		buf.WriteString("{\n")
-		for k, v := range actualData {
-			key := fmt.Sprintf("%v", k)
-			value := getTypeValue(v)
-			indentStr := strings.Repeat("  ", indentLevel+1)
-			path := fmt.Sprintf("%s.%s", key, getTypeName(v))
-			if indent, ok := pathIndentMap[path]; ok {
-				buf.WriteString(strings.Repeat("  ", indent+1))
+
+func traverseYAMLTree(node interface{}) bool {
+	switch node := node.(type) {
+	case map[string]interface{}:
+		for key, value := range node {
+			if mapValue, ok := value.(map[string]interface{}); ok {
+				if traverseYAMLTree(mapValue) {
+					node[key] = mapValue
+				}
+			} else if listValue, ok := value.([]interface{}); ok {
+				if traverseYAMLList(listValue) {
+					node[key] = listValue
+				}
 			} else {
-				buf.WriteString(indentStr)
+				switch value.(type) {
+				case map[interface{}]interface{}:
+					mapValue := make(map[string]interface{})
+					for k, v := range value.(map[interface{}]interface{}) {
+						mapValue[fmt.Sprintf("%v", k)] = v
+					}
+					node[key] = mapValue
+					return true
+				case string:
+					if newValue := correctString(value.(string)); newValue != value {
+						node[key] = newValue
+						return true
+					}
+				case nil:
+					delete(node, key)
+					return true
+				}
 			}
-			buf.WriteString(fmt.Sprintf("%s: %s", key, value))
-			if indent, ok := pathIndentMap[path]; ok && indentLevel+1 <= indent {
-				buf.WriteString("\n")
-			} else {
-				buf.WriteString(",\n")
-			}
-			generateCorrectedData(v, pathIndentMap, indentLevel+1)
 		}
-		buf.WriteString(strings.Repeat("  ", indentLevel))
-		buf.WriteString("}")
 	case []interface{}:
-		buf.WriteString("[\n")
-		for i, v := range actualData {
-			value := getTypeValue(v)
-			indentStr := strings.Repeat("  ", indentLevel+1)
-			path := fmt.Sprintf("[%d].%s", i, getTypeName(v))
-			if indent, ok := pathIndentMap[path]; ok {
-				buf.WriteString(strings.Repeat("  ", indent+1))
-			} else {
-				buf.WriteString(indentStr)
-			}
-			buf.WriteString(value)
-			if indent, ok := pathIndentMap[path]; ok && indentLevel+1 <= indent {
-				buf.WriteString("\n")
-			} else {
-				buf.WriteString(",\n")
-			}
-			generateCorrectedData(v, pathIndentMap, indentLevel+1)
+		if traverseYAMLList(node) {
+			return true
 		}
-		buf.WriteString(strings.Repeat("  ", indentLevel))
-		buf.WriteString("]")
-	default:
-		return []byte(getTypeValue(actualData))
 	}
-	return buf.Bytes()
+	return false
 }
-func getTypeValue(value interface{}) string {
-	switch value.(type) {
-	case map[interface{}]interface{}, []interface{}:
-		data, err := yaml.Marshal(value)
-		if err != nil {
-			return ""
+
+func traverseYAMLList(list []interface{}) bool {
+	changed := false
+	for i, item := range list {
+		if mapValue, ok := item.(map[string]interface{}); ok {
+			if traverseYAMLTree(mapValue) {
+				list[i] = mapValue
+				changed = true
+			}
+		} else if nestedList, ok := item.([]interface{}); ok {
+			if traverseYAMLList(nestedList) {
+				list[i] = nestedList
+				changed = true
+			}
+		} else {
+			switch item.(type) {
+			case map[interface{}]interface{}:
+				mapValue := make(map[string]interface{})
+				for k, v := range item.(map[interface{}]interface{}) {
+					mapValue[fmt.Sprintf("%v", k)] = v
+				}
+				list[i] = mapValue
+				changed = true
+			}
 		}
-		return "\n" + strings.TrimSpace(string(data))
+	}
+	return changed
+}
+
+func removeEmptyNodes(node interface{}) interface{} {
+	switch node := node.(type) {
+	case map[string]interface{}:
+		for key, value := range node {
+			node[key] = removeEmptyNodes(value)
+		}
+		for key, value := range node {
+			if isEmpty(value) {
+				delete(node, key)
+			}
+		}
+	case []interface{}:
+		for i := range node {
+			node[i] = removeEmptyNodes(node[i])
+		}
+		for i := 0; i < len(node); i++ {
+			if isEmpty(node[i]) {
+				node = append(node[:i], node[i+1:]...)
+				i--
+			}
+		}
+	}
+	return node
+}
+
+func isEmpty(node interface{}) bool {
+	switch node := node.(type) {
+	case map[string]interface{}:
+		return len(node) == 0
+	case []interface{}:
+		return len(node) == 0
+	case string:
+		return node == ""
 	default:
-		return fmt.Sprintf("%v", value)
+		return false
 	}
 }
+
+func correctString(str string) string {
+	str = strings.TrimSpace(str)
+	str = strings.ReplaceAll(str, "\\n", "\n")
+	return str
+}
+
 func generateDiff(originalData, correctedData []byte) string {
 	diff := difflib.UnifiedDiff{
 		A:        difflib.SplitLines(string(originalData)),
@@ -418,25 +249,24 @@ func generateDiff(originalData, correctedData []byte) string {
 	}
 	text, err := difflib.GetUnifiedDiffString(diff)
 	if err != nil {
- 		fmt.Println("Error generating diff:", err)
- 		return ""
- 	}
- 	// Add color coding of the terminal using ASCII escape codes
- 	lines := strings.Split(text, "\n")
- 	var buf bytes.Buffer
- 	for _, line := range lines {
- 		switch {
- 		case strings.HasPrefix(line, "+"):
- 			buf.WriteString("\033[32m") // Green
- 		case strings.HasPrefix(line, "-"):
- 			buf.WriteString("\033[31m") // Red
- 		case strings.HasPrefix(line, "@"):
- 			buf.WriteString("\033[36m") // Cyan
- 		default:
- 			buf.WriteString("\033[0m") // Reset
- 		}
- 		buf.WriteString(line)
- 		buf.WriteString("\n")
- 	}
- 	return buf.String()
+		fmt.Println("Error generating diff:", err)
+		return ""
+	}
+	lines := strings.Split(text, "\n")
+	var buf bytes.Buffer
+	for _, line := range lines {
+		switch {
+		case strings.HasPrefix(line, "+"):
+			buf.WriteString("\033[32m")
+		case strings.HasPrefix(line, "-"):
+			buf.WriteString("\033[31m")
+		case strings.HasPrefix(line, "@"):
+			buf.WriteString("\033[36m")
+		default:
+			buf.WriteString("\033[0m")
+		}
+		buf.WriteString(line)
+		buf.WriteString("\n")
+	}
+	return buf.String()
 }
