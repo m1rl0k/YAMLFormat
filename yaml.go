@@ -6,17 +6,17 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"unicode"
 
+	"github.com/pmezard/go-difflib/difflib"
 	"gopkg.in/yaml.v3"
 )
 
 func main() {
 	wd, err := os.Getwd()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to get current working directory: %v", err)
 	}
 
 	err = filepath.Walk(wd, func(path string, info os.FileInfo, err error) error {
@@ -30,7 +30,7 @@ func main() {
 	})
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error walking the path %s: %v", wd, err)
 	}
 }
 
@@ -69,53 +69,17 @@ func updateYAMLNodeStyle(node *yaml.Node) {
 }
 
 func showDiff(path, original, formatted string) {
-	var builder strings.Builder
-	originalLines := strings.Split(original, "\n")
-	formattedLines := strings.Split(formatted, "\n")
-
-	for i := 0; i < len(originalLines) || i < len(formattedLines); i++ {
-		var originalLine, formattedLine string
-		if i < len(originalLines) {
-			originalLine = originalLines[i]
-		}
-		if i < len(formattedLines) {
-			formattedLine = formattedLines[i]
-		}
-
-		switch {
-		case originalLine == formattedLine:
-			builder.WriteString(originalLine)
-			builder.WriteString("\n")
-		case len(originalLine) == 0:
-			builder.WriteString("\x1b[32m" + formattedLine + "\x1b[0m")
-			builder.WriteString("\n")
-		case len(formattedLine) == 0:
-			builder.WriteString("\x1b[31m" + originalLine + "\x1b[0m")
-			builder.WriteString("\n")
-		default:
-			start := 0
-			for start < len(originalLine) && start < len(formattedLine) && originalLine[start] == formattedLine[start] {
-				start++
-			}
-			end := 0
-			for end < len(originalLine)-start && end < len(formattedLine)-start && originalLine[len(originalLine)-end-1] == formattedLine[len(formattedLine)-end-1] {
-				end++
-			}
-			if start > 0 || end > 0 {
-				builder.WriteString(originalLine[:start])
-			}
-			builder.WriteString("\x1b[31m" + originalLine[start:len(originalLine)-end] + "\x1b[0m")
-			builder.WriteString("\x1b[32m" + formattedLine[start:len(formattedLine)-end] + "\x1b[0m")
-			if start > 0 || end > 0 {
-				builder.WriteString(formattedLine[len(formattedLine)-end:])
-			}
-			builder.WriteString("\n")
-		}
+	diff := difflib.UnifiedDiff{
+		A:        difflib.SplitLines(original),
+		B:        difflib.SplitLines(formatted),
+		FromFile: "Original",
+		ToFile:   "Formatted",
+		Context:  3,
 	}
+	diffText, _ := difflib.GetUnifiedDiffString(diff)
 
-	diff := builder.String()
-	if diff != "" {
-		fmt.Printf("Differences in file %s:\n%s", path, diff)
+	if diffText != "" {
+		fmt.Printf("Differences in file %s:\n%s", path, diffText)
 	}
 }
 
