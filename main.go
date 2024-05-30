@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"unicode"
+
 
 	"github.com/pmezard/go-difflib/difflib"
 	"gopkg.in/yaml.v3"
