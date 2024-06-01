@@ -8,7 +8,7 @@ on:
     branches:
       - main
 
-job
+jobs:
   YAMLFormat1:
     runs-on: ubuntu-latest
     steps:
