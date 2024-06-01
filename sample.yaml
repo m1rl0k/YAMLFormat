@@ -6,4 +6,5 @@ key3:
   subkey1: subvalue1
     
   - subitem1
-  - subitem2
+  - subitem 
+    - subotem1
